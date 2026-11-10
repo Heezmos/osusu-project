@@ -13,11 +13,11 @@ type Goal = { id:string; name:string; currency:"SLE"|"USD"; target_amount:number
 type Tx = { id:string; transaction_type:string; direction:string; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type Overview = { profile:{display_name:string|null;country_code:string;kyc_status:string;account_status:string}|null; wallets:WalletRow[]; savings_goals:Goal[]; transactions:Tx[] };
 
-const supabase = createClient();
 const formatMoney = (amount:number|string,currency:"SLE"|"USD") => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(Number(amount)).replace("$",currency==="SLE"?"Le ":"$");
 const dateLabel = (value:string) => new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(value));
 
 export default function OsusuPage() {
+  const [supabase,setSupabase] = useState<ReturnType<typeof createClient>|null>(null);
   const [session,setSession] = useState<any>(null);
   const [overview,setOverview] = useState<Overview|null>(null);
   const [loading,setLoading] = useState(true);
@@ -38,6 +38,11 @@ export default function OsusuPage() {
   },[]);
 
   useEffect(() => {
+    try { setSupabase(createClient()); } catch(e) { setError(e instanceof Error?e.message:"Supabase is not configured."); setLoading(false); }
+  },[]);
+
+  useEffect(() => {
+    if(!supabase)return;
     let alive=true;
     supabase.auth.getSession().then(async ({data}) => {
       if(!alive)return;
@@ -56,10 +61,10 @@ export default function OsusuPage() {
       }
     });
     return ()=>{alive=false;subscription.unsubscribe();};
-  },[loadOverview]);
+  },[loadOverview,supabase]);
 
   async function handleAuth(event:FormEvent<HTMLFormElement>) {
-    event.preventDefault();setBusy(true);setError("");setMessage("");
+    event.preventDefault();if(!supabase){setError("Supabase is not configured for this deployment.");return;}setBusy(true);setError("");setMessage("");
     try {
       if(mode==="signup") {
         const {data,error}=await supabase.auth.signUp({email,password,options:{data:{display_name:displayName.trim()}}});
@@ -75,7 +80,7 @@ export default function OsusuPage() {
   }
 
   async function signOut() {
-    setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
+    if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
   }
 
