@@ -1,85 +1,132 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
-  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronLeft, ChevronRight,
-  CreditCard, Eye, EyeOff, Home, Landmark, LockKeyhole, Menu, Plus, Search,
-  Settings, ShieldCheck, Sparkles, TrendingUp, Wallet, X, PiggyBank, Target,
-  CircleHelp, ChartNoAxesCombined, UserRound, Gift, MoreHorizontal
+  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard,
+  Eye, EyeOff, Home, Landmark, LockKeyhole, LogOut, PiggyBank, Search, ShieldCheck,
+  Sparkles, Target, TrendingUp, Wallet, X, LoaderCircle
 } from "lucide-react";
 
-type Screen = "Savings Account" | "Total Cards" | "Performance" | "Home";
-const nav = [
-  { name: "Home" as Screen, icon: Home },
-  { name: "Savings Account" as Screen, icon: PiggyBank },
-  { name: "Total Cards" as Screen, icon: CreditCard },
-  { name: "Performance" as Screen, icon: ChartNoAxesCombined },
-];
-const activity = [
-  { name: "Wise Transfer", detail: "04 Nov 2026 · 7:20 PM", amount: "SLE 1,250.00", type: "Deposit", icon: ArrowDownLeft },
-  { name: "Stephen", detail: "06 Nov 2026 · 8:20 AM", amount: "SLE 460.00", type: "Received", icon: ArrowDownLeft },
-  { name: "Savings contribution", detail: "08 Nov 2026 · 3:20 PM", amount: "SLE 730.20", type: "Saved", icon: PiggyBank },
-];
+type WalletRow = { id:string; currency:"SLE"|"USD"; status:string; balance:number|string };
+type Goal = { id:string; name:string; currency:"SLE"|"USD"; target_amount:number|string|null; status:string; savings_type:string; contribution_frequency:string|null };
+type Tx = { id:string; transaction_type:string; direction:string; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
+type Overview = { profile:{display_name:string|null;country_code:string;kyc_status:string;account_status:string}|null; wallets:WalletRow[]; savings_goals:Goal[]; transactions:Tx[] };
 
-export default function HomePage() {
-  const [screen, setScreen] = useState<Screen>("Home");
-  const [hidden, setHidden] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const money = (value: string) => hidden ? "••••••••" : value;
-  const action = (name: string) => setNotice(name + " is a design preview. It will be enabled after secure provider integrations, compliance checks and testing.");
-  const changeScreen = (next: Screen) => { setScreen(next); setMenuOpen(false); };
-  return (
-    <main className="osusu-app">
-      <aside className={`side-panel ${menuOpen ? "side-open" : ""}`}>
-        <div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span><button className="close-menu" onClick={() => setMenuOpen(false)}><X size={19}/></button></div>
-        <p className="nav-caption">YOUR SPACE</p>
-        {nav.map(({name,icon:Icon}) => <button key={name} className={`side-link ${screen===name?"selected":""}`} onClick={() => changeScreen(name)}><Icon size={18}/>{name}{screen===name && <i/>}</button>)}
-        <div className="side-spacer"/>
-        <div className="side-help"><ShieldCheck size={19}/><div><b>Your money matters</b><span>Security is part of every step.</span></div></div>
-        <button className="side-link" onClick={() => action("Help & support")}><CircleHelp size={18}/>Help & support</button>
-        <button className="side-link" onClick={() => action("Settings")}><Settings size={18}/>Settings</button>
-        <div className="profile"><span className="avatar">HM</span><span><b>Henrison Moseray</b><small>Personal account</small></span><MoreHorizontal size={19}/></div>
-      </aside>
-      {menuOpen && <button className="scrim" onClick={() => setMenuOpen(false)} aria-label="Close menu"/>}
-      <section className="workspace">
-        <header className="topbar">
-          <button className="menu-button" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={21}/></button>
-          <div className="breadcrumb">My Osusu <ChevronRight size={14}/><b>{screen}</b></div>
-          <div className="top-tools"><div className="search"><Search size={16}/><span>Search transactions</span></div><button className="bell" onClick={() => action("Notifications")} aria-label="Notifications"><Bell size={19}/><i/></button><span className="avatar top-avatar">HM</span></div>
-        </header>
-        <div className="page-content">
-          <div className="welcome"><div><span className="overline">YOUR MONEY. YOUR FUTURE.</span><h1>{screen === "Home" ? "Welcome back, Henrison" : screen}</h1><p>{screen === "Home" ? "A better view of your savings starts here." : "Keep your money moving towards what matters."}</p></div><button className="date-pill"> <span/> Personal account</button></div>
-          {notice && <div className="notice"><ShieldCheck size={17}/><span>{notice}</span><button onClick={() => setNotice("")}><X size={16}/></button></div>}
-          {screen === "Total Cards" ? (
-            <>
-              <section className="total-card"><div className="total-card-head"><span>YOUR TOTAL BALANCE</span><button onClick={() => setHidden(!hidden)}>{hidden?<Eye size={17}/>:<EyeOff size={17}/>}</button></div><h2>{money("SLE 998,216.58")}</h2><p><TrendingUp size={14}/> Your money, organised in one place</p><div className="account-splits"><div><span className="yellow-dot"/>Savings Account <b>{money("SLE 825,912.40")}</b></div><div><span className="blue-dot"/>Spend Account <b>{money("SLE 172,304.18")}</b></div></div></section>
-              <div className="section-title"><div><h2>Manage cards</h2><p>Stay in control of your Osusu cards.</p></div><button onClick={() => action("Card options")}>More options <ChevronRight size={15}/></button></div>
-              <div className="manage-list"><button onClick={() => action("Lock card")}><span className="manage-icon"><LockKeyhole/></span><span><b>Lock card</b><small>Temporarily pause card activity</small></span><ChevronRight/></button><button onClick={() => action("Card usage controls")}><span className="manage-icon"><CreditCard/></span><span><b>Control card usage</b><small>Manage limits and transaction settings</small></span><ChevronRight/></button><button onClick={() => action("Replace card")}><span className="manage-icon"><ArrowLeftRight/></span><span><b>Replace card</b><small>For a lost, stolen or damaged card</small></span><ChevronRight/></button></div>
-            </>
-          ) : screen === "Performance" ? (
-            <>
-              <section className="performance-card"><div className="performance-top"><div><span className="muted-label">SAVINGS PERFORMANCE</span><h2>{money("SLE 8,250.00")}</h2><p><TrendingUp size={14}/> Growth overview · Illustrative data</p></div><span className="period">This year⌄</span></div><div className="chart"><div className="chart-y"><span>10k</span><span>7.5k</span><span>5k</span><span>2.5k</span><span>0</span></div><svg viewBox="0 0 650 190" preserveAspectRatio="none" role="img" aria-label="Illustrative savings growth chart"><defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#c7ed39" stopOpacity=".28"/><stop offset="100%" stopColor="#c7ed39" stopOpacity="0"/></linearGradient></defs><path d="M0 160 C55 160 60 150 105 148 S155 120 205 125 S260 130 310 105 S370 115 420 85 S480 80 520 45 S600 35 650 20 L650 190 L0 190Z" fill="url(#area)"/><path d="M0 160 C55 160 60 150 105 148 S155 120 205 125 S260 130 310 105 S370 115 420 85 S480 80 520 45 S600 35 650 20" fill="none" stroke="#c8ee3b" strokeWidth="3" vectorEffect="non-scaling-stroke"/><circle cx="520" cy="45" r="5" fill="#c8ee3b" stroke="#123e31" strokeWidth="3"/></svg></div><div className="chart-months"><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span></div></section>
-              <div className="section-title"><div><h2>Your rate breakdown</h2><p>Understand how your savings plan works.</p></div></div><div className="rate-card"><div><span className="yellow-dot"/>Illustrative tier A <b>Rate to be confirmed</b></div><div><span className="blue-dot"/>Illustrative tier B <b>Rate to be confirmed</b></div><p>Any returns will depend on the specific approved savings product, its terms and applicable regulation. No rate is being offered in this preview.</p></div>
-            </>
-          ) : (
-            <>
-              <div className="account-grid">
-                <section className="savings-hero"><div className="hero-top"><span><PiggyBank size={17}/> SAVINGS ACCOUNT</span><button onClick={() => setHidden(!hidden)}>{hidden?<Eye size={17}/>:<EyeOff size={17}/>}</button></div><div className="hero-balance">{money("SLE 8,250.00")}</div><div className="hero-growth"><Sparkles size={14}/> Your savings journey, in progress</div><div className="hero-actions"><button className="lime-action" onClick={() => action("Transfer") }><ArrowLeftRight size={16}/> Transfer</button><button className="blue-action" onClick={() => action("Set savings target")}><Target size={16}/> Set Target</button><button className="round-action" onClick={() => action("Savings settings")}><Settings size={17}/></button></div><div className="hero-glow"/></section>
-                <section className="spend-card"><div className="spend-title"><span>SPEND ACCOUNT</span><span className="spend-mark">$</span></div><h2>{money("$1,240.50")}</h2><p>Available USD balance</p><button onClick={() => changeScreen("Total Cards")}>View accounts <ChevronRight size={15}/></button></section>
-              </div>
-              <div className="section-title"><div><h2>My savings goals</h2><p>Little by little, you’re getting there.</p></div><button onClick={() => action("Create a savings goal")}><Plus size={15}/> New goal</button></div>
-              <div className="goals-grid"><article className="goal-card"><div className="goal-head"><span className="goal-icon"><Landmark size={18}/></span><span>75%</span></div><b>School fees</b><p>{money("SLE 6,000")} <small>of SLE 8,000</small></p><div className="goal-track"><i style={{width:"75%"}}/></div></article><article className="goal-card"><div className="goal-head"><span className="goal-icon lime"><Home size={18}/></span><span>40%</span></div><b>House project</b><p>{money("SLE 4,000")} <small>of SLE 10,000</small></p><div className="goal-track"><i style={{width:"40%"}}/></div></article><button className="add-goal" onClick={() => action("Create a savings goal")}><Plus size={20}/><span>Create a new goal</span></button></div>
-              <div className="section-title"><div><h2>Transaction history</h2><p>Your recent account activity.</p></div><button onClick={() => action("Full transaction history")}>See details <ChevronRight size={15}/></button></div>
-              <section className="transactions">{activity.map(({name,detail,amount,type,icon:Icon})=><div className="transaction" key={name}><span className="transaction-icon"><Icon size={17}/></span><span className="transaction-name"><b>{name}</b><small>{detail}</small></span><span className="transaction-amount"><b>{money(amount)}</b><small>{type}</small></span></div>)}</section>
-            </>
-          )}
-          <div className="support-banner"><span><Gift size={18}/></span><div><b>Good habits build brighter futures.</b><small>Keep saving, keep growing. Your next milestone is within reach.</small></div><button onClick={() => action("Osusu rewards")}>Explore <ChevronRight size={15}/></button></div>
-          <footer><span>© 2026 Osusu · A Delight Ventures product</span><span><ShieldCheck size={13}/> Secure design preview <i/> Sierra Leone</span></footer>
-          <p className="disclaimer">CONCEPT PREVIEW · All balances, names, chart values and transactions shown are illustrative only. No real funds, cards, transfers or interest rates are active.</p>
-        </div>
-        <nav className="mobile-tabs">{nav.map(({name,icon:Icon})=><button key={name} className={screen===name?"tab-active":""} onClick={() => changeScreen(name)}><Icon size={19}/><small>{name==="Savings Account"?"Osusu":name==="Performance"?"Growth":name==="Total Cards"?"Cards":name}</small></button>)}</nav>
-      </section>
-    </main>
-  );
+const supabase = createClient();
+const formatMoney = (amount:number|string,currency:"SLE"|"USD") => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(Number(amount)).replace("$",currency==="SLE"?"Le ":"$");
+const dateLabel = (value:string) => new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(value));
+
+export default function OsusuPage() {
+  const [session,setSession] = useState<any>(null);
+  const [overview,setOverview] = useState<Overview|null>(null);
+  const [loading,setLoading] = useState(true);
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState("");
+  const [message,setMessage] = useState("");
+  const [mode,setMode] = useState<"login"|"signup">("login");
+  const [email,setEmail] = useState("");
+  const [password,setPassword] = useState("");
+  const [displayName,setDisplayName] = useState("");
+  const [hidden,setHidden] = useState(false);
+  const [active,setActive] = useState("Overview");
+
+  const loadOverview = useCallback(async () => {
+    const {data,error:rpcError} = await supabase.rpc("osusu_get_my_overview");
+    if (rpcError) throw rpcError;
+    setOverview(data as Overview);
+  },[]);
+
+  useEffect(() => {
+    let alive=true;
+    supabase.auth.getSession().then(async ({data}) => {
+      if(!alive)return;
+      setSession(data.session);
+      if(data.session) {
+        try { await loadOverview(); } catch(e) { setError(e instanceof Error?e.message:"Unable to load your Osusu account."); }
+      }
+      if(alive)setLoading(false);
+    });
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,nextSession)=>{
+      setSession(nextSession);
+      if(!nextSession){setOverview(null);setLoading(false);}
+      else {
+        setLoading(true);
+        setTimeout(()=>{loadOverview().catch(e=>setError(e instanceof Error?e.message:"Unable to load account data.")).finally(()=>setLoading(false));},0);
+      }
+    });
+    return ()=>{alive=false;subscription.unsubscribe();};
+  },[loadOverview]);
+
+  async function handleAuth(event:FormEvent<HTMLFormElement>) {
+    event.preventDefault();setBusy(true);setError("");setMessage("");
+    try {
+      if(mode==="signup") {
+        const {data,error}=await supabase.auth.signUp({email,password,options:{data:{display_name:displayName.trim()}}});
+        if(error)throw error;
+        if(!data.session)setMessage("Account created. Check your email to confirm your address, then sign in.");
+        else setMessage("Your Osusu account has been created.");
+      } else {
+        const {error}=await supabase.auth.signInWithPassword({email,password});
+        if(error)throw error;
+      }
+    } catch(e) {setError(e instanceof Error?e.message:"Authentication failed.");}
+    finally{setBusy(false);}
+  }
+
+  async function signOut() {
+    setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
+    if(error)setError(error.message);
+  }
+
+  const totals=useMemo(()=>{
+    const byCurrency:{SLE:number;USD:number}={SLE:0,USD:0};
+    overview?.wallets.forEach(w=>{byCurrency[w.currency]+=Number(w.balance)||0;});
+    return byCurrency;
+  },[overview]);
+
+  if(loading) return <main className="auth-loading"><div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span></div><LoaderCircle className="spin" size={25}/><p>Securely loading your Osusu space…</p></main>;
+
+  if(!session) return <main className="auth-shell">
+    <section className="auth-art"><div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span></div><div className="auth-art-copy"><span className="overline">SAVE SMART. GROW TOGETHER.</span><h1>Small steps.<br/>Brighter futures.</h1><p>A clearer, calmer way to organise your money and work towards what matters.</p><div className="auth-art-note"><ShieldCheck size={18}/> Your account is protected by secure sign-in.</div></div><span className="auth-art-footer">OSUSU · SIERRA LEONE</span></section>
+    <section className="auth-form-wrap"><div className="auth-form">
+      <span className="overline">WELCOME TO OSUSU</span><h2>{mode==="login"?"Sign in to your account":"Create your account"}</h2><p>{mode==="login"?"Your savings space is waiting for you.":"Start with your personal Osusu account."}</p>
+      <form onSubmit={handleAuth}>
+        {mode==="signup"&&<label>Full name<input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Your full name" required autoComplete="name"/></label>}
+        <label>Email address<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required autoComplete="email"/></label>
+        <label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters" required minLength={8} autoComplete={mode==="login"?"current-password":"new-password"}/></label>
+        {error&&<div className="auth-error">{error}</div>}{message&&<div className="auth-message">{message}</div>}
+        <button className="auth-submit" disabled={busy}>{busy?<LoaderCircle className="spin" size={17}/>:null}{mode==="login"?"Sign in":"Create account"}</button>
+      </form>
+      <div className="auth-switch">{mode==="login"?"New to Osusu?":"Already have an account?"}<button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");setMessage("");}}>{mode==="login"?"Create an account":"Sign in"}</button></div>
+      <div className="auth-legal"><LockKeyhole size={13}/> Secure authentication · Your financial data stays private</div>
+    </div></section>
+  </main>;
+
+  const wallets=overview?.wallets??[];
+  const goals=overview?.savings_goals??[];
+  const transactions=overview?.transactions??[];
+  const name=overview?.profile?.display_name||session.user.email?.split("@")[0]||"there";
+  return <main className="osusu-app">
+    <aside className="side-panel"><div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span></div><p className="nav-caption">YOUR SPACE</p>
+      {["Overview","Savings Account","Total Cards","Performance"].map((item,i)=><button key={item} className={`side-link ${active===item?"selected":""}`} onClick={()=>setActive(item)}>{[Home,PiggyBank,CreditCard,TrendingUp].map((Icon,j)=>i===j?<Icon key={item} size={18}/>:null)}{item}{active===item&&<i/>}</button>)}
+      <div className="side-spacer"/><div className="side-help"><ShieldCheck size={19}/><div><b>Your money matters</b><span>Security is part of every step.</span></div></div><button className="side-link" onClick={signOut}><LogOut size={18}/>Sign out</button><div className="profile"><span className="avatar">{String(name).slice(0,2).toUpperCase()}</span><span><b>{name}</b><small>{session.user.email}</small></span></div>
+    </aside>
+    <section className="workspace"><header className="topbar"><div className="breadcrumb">My Osusu <ChevronRight size={14}/><b>{active}</b></div><div className="top-tools"><div className="search"><Search size={16}/><span>Search transactions</span></div><button className="bell" aria-label="Notifications"><Bell size={19}/></button><span className="avatar top-avatar">{String(name).slice(0,2).toUpperCase()}</span></div></header>
+      <div className="page-content"><div className="welcome"><div><span className="overline">YOUR MONEY. YOUR FUTURE.</span><h1>Welcome back, {name.split(" ")[0]}</h1><p>Your Osusu account overview, securely connected.</p></div><span className="date-pill"><span/> {overview?.profile?.account_status??"Account pending"}</span></div>
+      {error&&<div className="notice"><ShieldCheck size={17}/><span>{error}</span><button onClick={()=>setError("")}><X size={16}/></button></div>}
+      {active==="Total Cards"?<><div className="section-title"><div><h2>Cards & accounts</h2><p>Card issuance is not enabled yet.</p></div></div><section className="transactions"><div className="transaction"><span className="transaction-icon"><CreditCard size={17}/></span><span className="transaction-name"><b>Dash Card</b><small>Available after issuer and compliance approval</small></span><span className="transaction-amount"><b>Not issued</b></span></div></section></>:
+      active==="Performance"?<><div className="section-title"><div><h2>Savings performance</h2><p>Your verified savings activity will appear here as it is recorded.</p></div></div><section className="transactions"><p className="empty-state">No performance history is available yet. Osusu will show activity once your savings accounts have recorded contributions.</p></section></>:
+      <>
+      <div className="account-grid"><section className="savings-hero"><div className="hero-top"><span><Wallet size={17}/> WALLET BALANCES</span><button onClick={()=>setHidden(!hidden)}>{hidden?<Eye size={17}/>:<EyeOff size={17}/>}</button></div><div className="balance-pair"><div><small>SLE WALLET</small><div className="hero-balance">{hidden?"••••••":formatMoney(totals.SLE,"SLE")}</div></div><div><small>USD WALLET</small><div className="hero-balance">{hidden?"••••••":formatMoney(totals.USD,"USD")}</div></div></div><div className="hero-growth"><Sparkles size={14}/> Calculated from posted ledger entries</div><div className="hero-actions"><button className="lime-action" disabled onClick={()=>{}}><ArrowDownLeft size={16}/> Add Money</button><button className="blue-action" disabled><ArrowLeftRight size={16}/> Transfer</button><button className="round-action" onClick={()=>setHidden(!hidden)}>{hidden?<Eye size={17}/>:<EyeOff size={17}/>}</button></div></section><section className="spend-card"><div className="spend-title"><span>ACCOUNT STATUS</span><span className="spend-mark"><ShieldCheck size={16}/></span></div><h2>{overview?.profile?.kyc_status==="verified"?"Verified":"Verification pending"}</h2><p>Identity and account checks</p><button disabled>Manage verification <ChevronRight size={15}/></button></section></div>
+      <div className="section-title"><div><h2>My savings goals</h2><p>Your personal and scheduled savings plans.</p></div><button disabled><Target size={15}/> New goal</button></div>
+      <div className="goals-grid">{goals.length?goals.map(goal=><article className="goal-card" key={goal.id}><div className="goal-head"><span className="goal-icon"><Landmark size={18}/></span><span>{goal.status}</span></div><b>{goal.name}</b><p>{goal.target_amount?formatMoney(goal.target_amount,goal.currency):"No target set"}</p><div className="goal-track"><i style={{width:"0%"}}/></div></article>):<div className="empty-state goal-empty">No savings goals yet. Your goals will appear here when created.</div>}</div>
+      <div className="section-title"><div><h2>Transaction history</h2><p>Recent activity from your wallet ledger.</p></div></div>
+      <section className="transactions">{transactions.length?transactions.map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">No transactions yet. When your account has verified activity, it will appear here.</p>}</section>
+      </>}
+      <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Secure account connection</b><small>Balances are read from posted ledger entries. Money movement is not enabled in this preview.</small></div></div>
+      <footer><span>© 2026 Osusu · A Delight Ventures product</span><span><ShieldCheck size={13}/> Secure connection <i/> Sierra Leone</span></footer><p className="disclaimer">OSUSU EARLY ACCESS · Deposits, withdrawals, transfers, card issuance and interest-bearing products remain disabled pending authorised integrations and approvals.</p>
+      </div>
+    </section>
+  </main>;
 }
