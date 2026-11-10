@@ -33,6 +33,8 @@ export default function OsusuPage() {
   const [active,setActive] = useState("Overview");
 
   const loadOverview = useCallback(async (client: ReturnType<typeof createClient>) => {
+    const {error:initializeError} = await client.rpc("osusu_initialize_my_account");
+    if (initializeError) throw initializeError;
     const {data,error:rpcError} = await client.rpc("osusu_get_my_overview");
     if (rpcError) throw rpcError;
     setOverview(data as Overview);
