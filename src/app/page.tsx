@@ -31,8 +31,8 @@ export default function OsusuPage() {
   const [hidden,setHidden] = useState(false);
   const [active,setActive] = useState("Overview");
 
-  const loadOverview = useCallback(async () => {
-    const {data,error:rpcError} = await supabase.rpc("osusu_get_my_overview");
+  const loadOverview = useCallback(async (client: ReturnType<typeof createClient>) => {
+    const {data,error:rpcError} = await client.rpc("osusu_get_my_overview");
     if (rpcError) throw rpcError;
     setOverview(data as Overview);
   },[]);
@@ -48,7 +48,7 @@ export default function OsusuPage() {
       if(!alive)return;
       setSession(data.session);
       if(data.session) {
-        try { await loadOverview(); } catch(e) { setError(e instanceof Error?e.message:"Unable to load your Osusu account."); }
+        try { await loadOverview(supabase); } catch(e) { setError(e instanceof Error?e.message:"Unable to load your Osusu account."); }
       }
       if(alive)setLoading(false);
     });
@@ -57,7 +57,7 @@ export default function OsusuPage() {
       if(!nextSession){setOverview(null);setLoading(false);}
       else {
         setLoading(true);
-        setTimeout(()=>{loadOverview().catch(e=>setError(e instanceof Error?e.message:"Unable to load account data.")).finally(()=>setLoading(false));},0);
+        setTimeout(()=>{loadOverview(supabase).catch(e=>setError(e instanceof Error?e.message:"Unable to load account data.")).finally(()=>setLoading(false));},0);
       }
     });
     return ()=>{alive=false;subscription.unsubscribe();};
