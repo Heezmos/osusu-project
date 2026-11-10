@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard,
@@ -18,7 +19,7 @@ const dateLabel = (value:string) => new Intl.DateTimeFormat("en-GB",{day:"2-digi
 
 export default function OsusuPage() {
   const [supabase,setSupabase] = useState<ReturnType<typeof createClient>|null>(null);
-  const [session,setSession] = useState<any>(null);
+  const [session,setSession] = useState<Session|null>(null);
   const [overview,setOverview] = useState<Overview|null>(null);
   const [loading,setLoading] = useState(true);
   const [busy,setBusy] = useState(false);
@@ -108,7 +109,6 @@ export default function OsusuPage() {
     </div></section>
   </main>;
 
-  const wallets=overview?.wallets??[];
   const goals=overview?.savings_goals??[];
   const transactions=overview?.transactions??[];
   const name=overview?.profile?.display_name||session.user.email?.split("@")[0]||"there";
