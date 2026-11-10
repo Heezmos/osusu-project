@@ -53,6 +53,32 @@ The function is `SECURITY DEFINER` in the private schema with an empty search pa
 
 Supabase security advisor also reports informational `RLS Enabled No Policy` findings for these private tables. This is intentional at this stage: no browser role can access the schema, and trusted server operations are the only planned access path. The advisor separately reported existing public-schema function and Auth configuration warnings; those belong to the shared DVL project and were not changed as part of Osusu work.
 
+
+## Wallet and payment workflow layer
+
+The schema now also includes `wallet_transactions` and trusted server-only functions:
+
+- `osusu.create_customer_wallet(user_id, currency)` creates or returns the customer's SLE/USD wallet and its customer ledger account. Wallets start as `pending`; activation is an authorised operational action.
+- `osusu.create_payment_intent(...)` creates idempotent deposit, withdrawal, transfer and supported payment intents only against an active wallet owned by that customer.
+- `osusu.record_internal_transfer(...)` performs same-currency wallet-to-wallet transfers, locks both wallets in deterministic order, checks the source ledger balance, posts the balanced journal, and records debit/credit transaction history.
+- `osusu.transition_payment_intent(...)` enforces allowed payment lifecycle transitions. It does not verify provider signatures; only a trusted backend after independent provider verification may call it.
+
+All new wallet/payment functions are restricted to `service_role`; `anon` and `authenticated` cannot execute them. The new transaction history table has RLS enabled and no client-role grants or policies.
+
+### Workflow test results
+
+Rollback-only database tests confirmed that an internal SLE transfer moved 125 from a 500 source balance to the destination (375 / 125), and that an overdraw attempt was rejected. Test users, wallets, ledger entries and transaction history were rolled back; no test data remains.
+
+The test suite also confirmed 16 Osusu tables with RLS enabled, zero direct table grants to browser roles, and the original 62 public tables unchanged.
+
+### Remaining before app integration
+
+- Implement provider-specific webhook signature verification, event replay protection and settlement reconciliation.
+- Add trusted server API routes with strict authentication/authorization, request validation, rate limiting and audit logging.
+- Design customer-safe read endpoints for balances and transaction history; keep direct client access to ledger tables disabled.
+- Add reversal workflows, operational approval controls and integration tests.
+- Connect the Next.js app only after secrets and server-side boundaries are configured.
+
 ## Not production-ready yet
 
 This is a database foundation, not a live-money system. It does not yet include balanced-ledger posting functions/triggers, complete user-facing RLS policies, KYC integrations, payment providers, bank connections, card issuing, settlement/reconciliation jobs, or legal/regulatory approval.
