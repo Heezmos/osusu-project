@@ -7,7 +7,7 @@
 
 ## Current database foundation
 
-The private `osusu` schema contains 15 tables:
+The private `osusu` schema contains 16 tables:
 
 - `customer_profiles` — customer profile and account/KYC state references.
 - `wallets` — SLE and USD wallet containers.
@@ -18,12 +18,13 @@ The private `osusu` schema contains 15 tables:
 - `card_accounts` — issuer references and card metadata only; never store PAN or CVV.
 - `notifications` — customer notifications.
 - `audit_events` — operational audit trail.
+- `wallet_transactions` — customer-facing transaction history linked to wallet and ledger workflows.
 
 ## Access boundary
 
 - The schema is not intended to be exposed through the Supabase Data API.
 - `anon` and `authenticated` have no schema usage or table grants.
-- RLS is enabled on all 15 tables. No end-user policies are defined yet, so direct client access is denied by default.
+- RLS is enabled on all 16 tables. No end-user policies are defined yet, so direct client access is denied by default.
 - `service_role` has schema/table privileges for trusted server-side operations only. Never put its key in browser code or a `NEXT_PUBLIC_*` variable.
 
 ## Important implementation rules
@@ -71,14 +72,26 @@ Rollback-only database tests confirmed that an internal SLE transfer moved 125 f
 
 The test suite also confirmed 16 Osusu tables with RLS enabled, zero direct table grants to browser roles, and the original 62 public tables unchanged.
 
-### Remaining before app integration
+### Authenticated customer account RPCs
+
+The live Supabase database also contains two customer-safe RPCs in the exposed public schema. Their source SQL is recorded in supabase/operations/osusu_customer_read_rpcs.sql.
+
+- public.osusu_initialize_my_account() derives the customer identity exclusively from auth.uid(), creates the customer's profile and SLE/USD wallets idempotently, and creates the corresponding ledger accounts.
+- public.osusu_get_my_overview() derives identity from auth.uid() and returns only that customer's profile, ledger-derived wallet balances, savings goals, and latest 20 wallet transactions.
+- Both functions are SECURITY DEFINER, use an empty search_path, qualify database objects, and reject calls without an authenticated user.
+- Execute is revoked from PUBLIC and anon; it is granted to authenticated and service_role. Direct table access to the private osusu schema remains unavailable to browser roles.
+- The Next.js client calls account initialization before requesting the overview. The app clears overview state on every auth-session change and discards responses from stale session revisions.
+
+These SQL definitions were applied directly to the live Supabase project before being recorded in the repository. The SQL file is an auditable source copy, not a Supabase CLI migration. Do not reapply it as a migration without first reconciling the remote migration history.
+
+### Remaining before real-money operations
 
 - Implement provider-specific webhook signature verification, event replay protection and settlement reconciliation.
-- Add trusted server API routes with strict authentication/authorization, request validation, rate limiting and audit logging.
-- Design customer-safe read endpoints for balances and transaction history; keep direct client access to ledger tables disabled.
+- Add trusted server API routes for privileged financial actions with strict authentication/authorization, request validation, rate limiting and audit logging.
 - Add reversal workflows, operational approval controls and integration tests.
-- Connect the Next.js app only after secrets and server-side boundaries are configured.
+- Complete KYC/AML integrations, payment providers, bank connections, card issuing, settlement/reconciliation jobs, safeguarding and legal/regulatory approvals.
+- Keep deposits, withdrawals, external transfers, card issuance and returns-bearing savings products disabled until those controls and authorisations are in place.
 
-## Not production-ready yet
+## Not production-ready for live money
 
-This is a database foundation, not a live-money system. It does not yet include balanced-ledger posting functions/triggers, complete user-facing RLS policies, KYC integrations, payment providers, bank connections, card issuing, settlement/reconciliation jobs, or legal/regulatory approval.
+The authenticated dashboard and customer read RPCs are connected to the database foundation, but Osusu is not a live-money system. Ledger-backed balances and account status can be read; real deposits, withdrawals, provider payments, bank linking, card issuing, and savings returns are not enabled.
