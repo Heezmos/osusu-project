@@ -32,12 +32,12 @@ export default function OsusuPage() {
   const [hidden,setHidden] = useState(false);
   const [active,setActive] = useState("Overview");
 
-  const loadOverview = useCallback(async (client: ReturnType<typeof createClient>) => {
+  const loadOverview = useCallback(async (client: ReturnType<typeof createClient>): Promise<Overview> => {
     const {error:initializeError} = await client.rpc("osusu_initialize_my_account");
     if (initializeError) throw initializeError;
     const {data,error:rpcError} = await client.rpc("osusu_get_my_overview");
     if (rpcError) throw rpcError;
-    setOverview(data as Overview);
+    return data as Overview;
   },[]);
 
   useEffect(() => {
@@ -47,24 +47,36 @@ export default function OsusuPage() {
   useEffect(() => {
     if(!supabase)return;
     let alive=true;
-    supabase.auth.getSession().then(async (result: { data: { session: Session | null } }) => {
-      const { data } = result;
-      if(!alive)return;
-      setSession(data.session);
-      if(data.session) {
-        try { await loadOverview(supabase); } catch(e) { setError(e instanceof Error?e.message:"Unable to load your Osusu account."); }
+    let sessionRevision=0;
+    const fetchOverviewForRevision = async (revision:number) => {
+      try {
+        const result=await loadOverview(supabase);
+        if(alive && revision===sessionRevision)setOverview(result);
+      } catch(e) {
+        if(alive && revision===sessionRevision)setError(e instanceof Error?e.message:"Unable to load your Osusu account.");
+      } finally {
+        if(alive && revision===sessionRevision)setLoading(false);
       }
-      if(alive)setLoading(false);
+    };
+    supabase.auth.getSession().then((result: { data: { session: Session | null } }) => {
+      if(!alive)return;
+      const revision=++sessionRevision;
+      const currentSession=result.data.session;
+      setSession(currentSession);
+      setOverview(null);
+      if(currentSession)void fetchOverviewForRevision(revision);
+      else setLoading(false);
     });
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,nextSession)=>{
+      const revision=++sessionRevision;
       setSession(nextSession);
-      if(!nextSession){setOverview(null);setLoading(false);}
-      else {
-        setLoading(true);
-        setTimeout(()=>{loadOverview(supabase).catch(e=>setError(e instanceof Error?e.message:"Unable to load account data.")).finally(()=>setLoading(false));},0);
-      }
+      setOverview(null);
+      setError("");
+      if(!nextSession){setLoading(false);return;}
+      setLoading(true);
+      setTimeout(()=>{void fetchOverviewForRevision(revision);},0);
     });
-    return ()=>{alive=false;subscription.unsubscribe();};
+    return ()=>{alive=false;sessionRevision++;subscription.unsubscribe();};
   },[loadOverview,supabase]);
 
   async function handleAuth(event:FormEvent<HTMLFormElement>) {
