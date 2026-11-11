@@ -192,7 +192,7 @@ export default function OsusuPage() {
         {message&&<div className="auth-message savings-message">{message}</div>}
         <div className="savings-summary-grid">
           <article className="section-stat"><span>MY SAVINGS PLANS</span><strong>{mySavings.length}</strong><small>Plans opened in your account</small></article>
-          <article className="section-stat"><span>CONFIRMED CONTRIBUTIONS</span><strong>{mySavings.reduce((sum,plan)=>sum+Number(plan.total_contributed||0),0).toLocaleString("en-US",{maximumFractionDigits:2})}</strong><small>Across SLE and USD plans · mixed currencies not totalled</small></article>
+          <article className="section-stat"><span>PLANS WITH CONTRIBUTIONS</span><strong>{mySavings.filter(plan=>Number(plan.total_contributed)>0).length}</strong><small>Plans with confirmed ledger-linked contributions</small></article>
           <article className="section-stat"><span>AVAILABLE PLAN TYPES</span><strong>{savingsProducts.filter(product=>product.is_available).length}</strong><small>Currently open for setup</small></article>
         </div>
         {showCreatePlan&&<section className="create-savings-panel">
