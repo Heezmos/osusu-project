@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard,
@@ -67,7 +67,7 @@ export default function OsusuPage() {
       if(currentSession)void fetchOverviewForRevision(revision);
       else setLoading(false);
     });
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,nextSession)=>{
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event: AuthChangeEvent, nextSession: Session | null)=>{
       const revision=++sessionRevision;
       setSession(nextSession);
       setOverview(null);
