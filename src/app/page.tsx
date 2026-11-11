@@ -47,7 +47,8 @@ export default function OsusuPage() {
   useEffect(() => {
     if(!supabase)return;
     let alive=true;
-    supabase.auth.getSession().then(async ({data}) => {
+    supabase.auth.getSession().then(async (result: { data: { session: Session | null } }) => {
+      const { data } = result;
       if(!alive)return;
       setSession(data.session);
       if(data.session) {
