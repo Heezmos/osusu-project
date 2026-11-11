@@ -113,10 +113,11 @@ begin
   if p_target_amount is null or p_target_amount <= 0 then
     raise exception 'Enter a savings target greater than zero';
   end if;
-  if p_currency not in ('SLE','USD') then raise exception 'Currency must be SLE or USD'; end if;
-  if p_contribution_frequency not in ('daily','weekly','monthly','flexible') then
+  if p_currency is null or p_currency not in ('SLE','USD') then raise exception 'Currency must be SLE or USD'; end if;
+  if p_contribution_frequency is null or p_contribution_frequency not in ('daily','weekly','monthly','flexible') then
     raise exception 'Choose a valid contribution frequency';
   end if;
+  if p_plan_code is null then raise exception 'Choose a savings plan'; end if;
 
   select * into v_product from osusu.savings_products
   where plan_code = p_plan_code and is_listed = true;
