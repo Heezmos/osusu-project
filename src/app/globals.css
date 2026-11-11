@@ -42,3 +42,9 @@
 .card-feature-grid small{font-size:9px;line-height:1.6;color:#89968d}
 .data-note{font-size:9px;color:#98a39b;line-height:1.6;margin-top:12px}
 @media(max-width:700px){.savings-summary-grid{grid-template-columns:1fr 1fr}.card-readiness-panel{align-items:flex-start;flex-direction:column;gap:20px;padding:19px}.card-illustration{width:100%;max-width:290px;min-width:0}.card-feature-grid{grid-template-columns:1fr}.savings-plan-card{align-items:flex-start}.savings-plan-target{margin-left:auto}.section-stat strong{font-size:21px}}
+
+/* Accessible primary navigation, including compact horizontal mobile navigation */
+.primary-navigation{display:flex;flex-direction:column}
+.primary-navigation .side-link:focus-visible{outline:2px solid #8ebd4b;outline-offset:2px}
+.bell:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:650px){.primary-navigation{display:flex;flex-direction:row;gap:2px;overflow-x:auto;white-space:nowrap;padding:0 8px 8px;scrollbar-width:thin}.side-panel .primary-navigation>.side-link{flex:0 0 auto;display:inline-flex;margin:3px;padding:9px 10px;font-size:10px}.side-panel .primary-navigation>.side-link.selected{background:#edf5ed}}
