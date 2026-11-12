@@ -266,10 +266,14 @@ export default function OsusuPage() {
   function exportTransactions() {
     if(!historyRows.length) return;
     const columns=["Transaction ID","Date","Description","Type","Direction","Status","Currency","Amount"];
+    const safeText=(value:unknown)=>{
+      const text=String(value??"");
+      return /^\\s*[=+\\-@]/.test(text) ? `'${text}` : text;
+    };
     const escapeCsv=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;
     const rows=historyRows.map(tx=>[
-      tx.id,tx.created_at,tx.description||tx.transaction_type.replaceAll("_"," "),
-      tx.transaction_type,tx.direction,tx.status,tx.currency,tx.amount
+      tx.id,tx.created_at,safeText(tx.description||tx.transaction_type.replaceAll("_"," ")),
+      safeText(tx.transaction_type),safeText(tx.direction),safeText(tx.status),safeText(tx.currency),tx.amount
     ]);
     const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\r\n");
     const blob=new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
