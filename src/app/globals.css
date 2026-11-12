@@ -144,3 +144,44 @@
 .notification-item button{padding:0;border:0;background:transparent;color:#34734b;font-size:9px;font-weight:700;cursor:pointer}
 .notification-empty{padding:14px 4px}
 @media(max-width:650px){.notification-panel{right:-44px}}
+
+
+/* Osusu Circle group coordination */
+.circle-hub{margin-top:28px;padding:20px;border:1px solid #e6eee5;border-radius:14px;background:#fff}
+.circle-hub-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.circle-hub-heading h2{margin:4px 0;font-size:19px;color:#214b35}
+.circle-hub-heading p{margin:0;color:#819087;font-size:10px}
+.circle-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:#edf6ed;color:#2c754a}
+.circle-setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.circle-setup-card{display:grid;gap:11px;padding:15px;border:1px solid #e9efe8;border-radius:11px;background:#fbfdfb}
+.circle-setup-card h3{display:flex;align-items:center;gap:7px;margin:0;color:#315b42;font-size:12px}
+.circle-setup-card label{display:grid;gap:5px;color:#6e7e72;font-size:9px;font-weight:700}
+.circle-setup-card input,.circle-setup-card select{width:100%;min-width:0;height:36px;padding:0 9px;border:1px solid #dfe8df;border-radius:7px;background:#fff;color:#355541;font-size:10px}
+.circle-form-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.circle-setup-card>p{margin:0;color:#89958b;font-size:9px;line-height:1.6}
+.circle-setup-card>button,.circle-invite button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 12px;border:0;border-radius:7px;background:#0b543d;color:#fff;font-size:9px;font-weight:700;cursor:pointer}
+.circle-setup-card>button:disabled{opacity:.5;cursor:not-allowed}
+.circle-list-heading{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px}
+.circle-list-heading h3{margin:0;color:#315b42;font-size:12px}
+.circle-list-heading span{color:#89958b;font-size:9px}
+.circle-list{display:grid;gap:10px}
+.circle-card{padding:14px;border:1px solid #e8eee7;border-radius:10px;background:#fff}
+.circle-card-top{display:flex;justify-content:space-between;gap:12px}
+.circle-card-top>div{display:grid;gap:5px}
+.circle-card-top b{font-size:12px;color:#2b533b}
+.circle-card-top small{font-size:9px;color:#7f8e83}
+.circle-metrics{display:flex;gap:28px;margin:14px 0;padding:11px 0;border-top:1px solid #edf1ed;border-bottom:1px solid #edf1ed}
+.circle-metrics span{display:grid;gap:3px}
+.circle-metrics b{font-size:10px;color:#315b42}
+.circle-metrics small{font-size:8px;color:#8a968d}
+.circle-invite{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border-radius:8px;background:#f4f8f1}
+.circle-invite span{display:grid;gap:4px;min-width:0}
+.circle-invite small{font-size:8px;color:#849187}
+.circle-invite b{overflow-wrap:anywhere;font-size:10px;color:#355b40}
+.circle-invite button{flex:none;min-height:29px;background:#e2eee1;color:#326846}
+.circle-members{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.circle-members span{display:flex;align-items:center;gap:5px;padding:5px 8px;border:1px solid #edf1ed;border-radius:20px;color:#637569;font-size:8px}
+.circle-members i{width:17px;height:17px;display:grid;place-items:center;border-radius:50%;background:#e7f1e6;color:#386d49;font-size:8px;font-style:normal}
+.circle-safety{display:flex;align-items:center;gap:6px;margin:12px 0 0;color:#849187;font-size:8px}
+.circle-leave{margin-top:10px;border:0;background:transparent;color:#9a6555;font-size:9px;cursor:pointer}
+@media(max-width:650px){.circle-hub{padding:14px}.circle-setup-grid{grid-template-columns:1fr}.circle-metrics{gap:14px}.circle-card-top{flex-direction:column;align-items:flex-start}}
