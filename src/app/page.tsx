@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import {
-  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard,
+  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard, Copy, Users,
   Eye, EyeOff, Home, Landmark, LockKeyhole, LogOut, PiggyBank, Search, ShieldCheck,
   Sparkles, TrendingUp, Wallet, X, LoaderCircle, Plus, CalendarDays, Clock3, CircleDollarSign
 } from "lucide-react";
@@ -14,6 +14,8 @@ type Goal = { id:string; name:string; currency:"SLE"|"USD"; target_amount:number
 type Tx = { id:string; transaction_type:string; direction:string; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type Overview = { profile:{display_name:string|null;country_code:string;kyc_status:string;account_status:string}|null; wallets:WalletRow[]; savings_goals:Goal[]; transactions:Tx[] };
 type SavingsProduct = { id:string; plan_code:string; display_name:string; savings_type:"goal"|"scheduled"|"fixed_term"|"circle"; description:string; currency_support:string[]; term_days:number|null; annual_rate:number|string|null; rate_status:string; is_available:boolean };
+type SavingsCircleMember = {user_id:string;display_name:string;member_role:string;joined_at:string|null};
+type SavingsCircle = {id:string;name:string;owner_user_id:string;currency:"SLE"|"USD";contribution_amount:number|string;frequency:string;status:string;max_members:number;invite_code:string|null;invitation_expires_at:string|null;is_owner:boolean;member_count:number;members:SavingsCircleMember[];created_at:string};
 type OsusuNotification = { id:string; notification_type:string; title:string; message:string; read_at:string|null; created_at:string };
 type SavingsActivity = { id:string; movement_type:"contribution"|"withdrawal"; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; funding_enabled:boolean; next_contribution_at:string|null; reminder_enabled:boolean; current_balance:number|string; total_contributed:number|string; contribution_count:number; withdrawal_count:number; recent_activity:SavingsActivity[] };
@@ -38,6 +40,14 @@ export default function OsusuPage() {
   const [savingsProducts,setSavingsProducts] = useState<SavingsProduct[]>([]);
   const [mySavings,setMySavings] = useState<SavingsPlan[]>([]);
   const [notifications,setNotifications] = useState<OsusuNotification[]>([]);
+  const [savingsCircles,setSavingsCircles] = useState<SavingsCircle[]>([]);
+  const [circleName,setCircleName] = useState("");
+  const [circleCurrency,setCircleCurrency] = useState<"SLE"|"USD">("SLE");
+  const [circleAmount,setCircleAmount] = useState("");
+  const [circleFrequency,setCircleFrequency] = useState("weekly");
+  const [circleMaxMembers,setCircleMaxMembers] = useState("10");
+  const [circleInviteCode,setCircleInviteCode] = useState("");
+  const [circleBusy,setCircleBusy] = useState(false);
   const [showNotifications,setShowNotifications] = useState(false);
   const [showCreatePlan,setShowCreatePlan] = useState(false);
   const [savingBusy,setSavingBusy] = useState(false);
@@ -58,19 +68,22 @@ export default function OsusuPage() {
   const loadOverview = useCallback(async (client: ReturnType<typeof createClient>): Promise<Overview> => {
     const {error:initializeError} = await client.rpc("osusu_initialize_my_account");
     if (initializeError) throw initializeError;
-    const [overviewResult,productsResult,savingsResult,notificationsResult] = await Promise.all([
+    const [overviewResult,productsResult,savingsResult,notificationsResult,circlesResult] = await Promise.all([
       client.rpc("osusu_get_my_overview"),
       client.rpc("osusu_get_savings_products"),
       client.rpc("osusu_get_my_savings"),
-      client.rpc("osusu_get_my_notifications")
+      client.rpc("osusu_get_my_notifications"),
+      client.rpc("osusu_get_my_savings_circles")
     ]);
     if (overviewResult.error) throw overviewResult.error;
     if (productsResult.error) throw productsResult.error;
     if (savingsResult.error) throw savingsResult.error;
     if (notificationsResult.error) throw notificationsResult.error;
+    if (circlesResult.error) throw circlesResult.error;
     setSavingsProducts((productsResult.data??[]) as SavingsProduct[]);
     setMySavings((savingsResult.data??[]) as SavingsPlan[]);
     setNotifications((notificationsResult.data??[]) as OsusuNotification[]);
+    setSavingsCircles((circlesResult.data??[]) as SavingsCircle[]);
     return overviewResult.data as Overview;
   },[]);
 
@@ -194,6 +207,45 @@ export default function OsusuPage() {
     finally {setScheduleBusy(null);}
   }
 
+  async function createSavingsCircle(event:FormEvent<HTMLFormElement>) {
+    event.preventDefault();if(!supabase)return;
+    setCircleBusy(true);setError("");setMessage("");
+    try {
+      const {data,error:circleError}=await supabase.rpc("osusu_create_savings_circle",{
+        p_name:circleName.trim(),p_currency:circleCurrency,p_contribution_amount:Number(circleAmount),
+        p_frequency:circleFrequency,p_max_members:Number(circleMaxMembers)
+      });
+      if(circleError)throw circleError;
+      await loadOverview(supabase);
+      setCircleName("");setCircleAmount("");
+      setMessage("Your Osusu Circle has been created as a draft. Share its invitation code with people you trust. Contributions are not enabled.");
+    } catch(e) {setError(e instanceof Error?e.message:"Unable to create your Osusu Circle.");}
+    finally {setCircleBusy(false);}
+  }
+
+  async function joinSavingsCircle(event:FormEvent<HTMLFormElement>) {
+    event.preventDefault();if(!supabase)return;
+    setCircleBusy(true);setError("");setMessage("");
+    try {
+      const {error:joinError}=await supabase.rpc("osusu_join_savings_circle",{p_invite_code:circleInviteCode.trim()});
+      if(joinError)throw joinError;
+      await loadOverview(supabase);setCircleInviteCode("");
+      setMessage("You have joined the Osusu Circle. Group contributions are not enabled yet.");
+    } catch(e) {setError(e instanceof Error?e.message:"Unable to join this Osusu Circle.");}
+    finally {setCircleBusy(false);}
+  }
+
+  async function leaveSavingsCircle(circle:SavingsCircle) {
+    if(!supabase)return;
+    setCircleBusy(true);setError("");setMessage("");
+    try {
+      const {error:leaveError}=await supabase.rpc("osusu_leave_savings_circle",{p_circle_id:circle.id});
+      if(leaveError)throw leaveError;
+      await loadOverview(supabase);setMessage("You have left the Osusu Circle.");
+    } catch(e) {setError(e instanceof Error?e.message:"Unable to leave this Osusu Circle.");}
+    finally {setCircleBusy(false);}
+  }
+
   async function markNotificationRead(notificationId:string) {
     if(!supabase)return;
     const {error:readError}=await supabase.rpc("osusu_mark_notification_read",{p_notification_id:notificationId});
@@ -307,6 +359,34 @@ export default function OsusuPage() {
             {plan.recent_activity?.length>0&&<div className="savings-activity"><b>Recent activity</b>{plan.recent_activity.map(item=><div key={item.id}><span>{item.movement_type==="contribution"?"Contribution":"Withdrawal"} · {dateLabel(item.created_at)}</span><strong>{item.movement_type==="contribution"?"+":"−"}{formatMoney(item.amount,item.currency)}</strong></div>)}</div>}
           </div>
         </article>):<div className="empty-state goal-empty">You have not created a savings plan yet. Choose an available option above to get started.</div>}</div>
+        <section className="circle-hub">
+          <div className="circle-hub-heading"><div><span className="overline">SAVE TOGETHER</span><h2>Osusu Circle</h2><p>Create a group savings circle or join one with an invitation code.</p></div><span className="circle-icon"><Users size={21}/></span></div>
+          <div className="circle-setup-grid">
+            <form className="circle-setup-card" onSubmit={createSavingsCircle}>
+              <h3><Plus size={15}/> Create a circle</h3>
+              <label>Circle name<input value={circleName} onChange={e=>setCircleName(e.target.value)} minLength={3} maxLength={60} placeholder="e.g. Family savings group" required/></label>
+              <div className="circle-form-row"><label>Currency<select value={circleCurrency} onChange={e=>setCircleCurrency(e.target.value as "SLE"|"USD")}><option value="SLE">SLE</option><option value="USD">USD</option></select></label><label>Frequency<select value={circleFrequency} onChange={e=>setCircleFrequency(e.target.value)}><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label></div>
+              <div className="circle-form-row"><label>Planned contribution<input type="number" min="0.01" step="0.01" value={circleAmount} onChange={e=>setCircleAmount(e.target.value)} placeholder="Amount" required/></label><label>Member limit<select value={circleMaxMembers} onChange={e=>setCircleMaxMembers(e.target.value)}>{[2,5,10,15,20,30,50,100].map(n=><option key={n} value={n}>{n} members</option>)}</select></label></div>
+              <p>Creates a draft group and invitation code. No money is collected.</p>
+              <button type="submit" disabled={circleBusy}>{circleBusy?<LoaderCircle className="spin" size={14}/>:<Plus size={14}/>} Create draft circle</button>
+            </form>
+            <form className="circle-setup-card" onSubmit={joinSavingsCircle}>
+              <h3><Users size={15}/> Join a circle</h3>
+              <label>Invitation code<input value={circleInviteCode} onChange={e=>setCircleInviteCode(e.target.value)} placeholder="Paste invitation UUID" required/></label>
+              <p>Only join a group when you recognise and trust its organiser. Invitations expire after 30 days.</p>
+              <button type="submit" disabled={circleBusy||!circleInviteCode.trim()}>{circleBusy?<LoaderCircle className="spin" size={14}/>:"Join circle"}</button>
+            </form>
+          </div>
+          <div className="circle-list-heading"><h3>My circles</h3><span>{savingsCircles.length} group{savingsCircles.length===1?"":"s"}</span></div>
+          <div className="circle-list">{savingsCircles.length?savingsCircles.map(circle=><article className="circle-card" key={circle.id}>
+            <div className="circle-card-top"><div><b>{circle.name}</b><small>{circle.frequency} · {circle.currency} {formatMoney(circle.contribution_amount,circle.currency)} planned per member</small></div><span className="product-state">{circle.status==="draft"?"Draft · not collecting":circle.status}</span></div>
+            <div className="circle-metrics"><span><b>{circle.member_count}/{circle.max_members}</b><small>Members</small></span><span><b>{circle.is_owner?"Organiser":"Member"}</b><small>Your role</small></span><span><b>{formatPlanDate(circle.created_at)}</b><small>Created</small></span></div>
+            {circle.is_owner&&circle.invite_code&&<div className="circle-invite"><span><small>Invitation code · expires {circle.invitation_expires_at?formatPlanDate(circle.invitation_expires_at):"in 30 days"}</small><b>{circle.invite_code}</b></span><button type="button" onClick={()=>void navigator.clipboard.writeText(circle.invite_code!)}><Copy size={13}/> Copy</button></div>}
+            <div className="circle-members">{circle.members.map(member=><span key={member.user_id}><i>{member.display_name.slice(0,1).toUpperCase()}</i>{member.display_name}{member.member_role==="owner"?" · Organiser":""}</span>)}</div>
+            {!circle.is_owner&&<button className="circle-leave" type="button" disabled={circleBusy} onClick={()=>void leaveSavingsCircle(circle)}>Leave circle</button>}
+            <p className="circle-safety"><ShieldCheck size={13}/> Draft coordination only. Contributions, pooled balances and payout rotation are not enabled.</p>
+          </article>):<p className="empty-state">You have not created or joined an Osusu Circle yet.</p>}</div>
+        </section>
         <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Your savings are tracked securely</b><small>Plan creation and ledger-backed savings records are implemented. Money movements remain gated until product approval, verified KYC/account status and active wallet funding controls are in place. Schedule preferences and due dates are saved. Reminder delivery requires a scheduled notification worker; automatic collection and interest payouts remain disabled.</small></div></div>
       </>}
       {active==="Total Cards"&&<>
