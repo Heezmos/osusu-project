@@ -304,15 +304,15 @@ export default function OsusuPage() {
     const columns=["Activity ID","Date","Savings plan","Movement","Status","Currency","Amount","Journal reference"];
     const safeText=(value:unknown)=>{
       const text=String(value??"");
-      return /^\s*[=+\-@]/.test(text) ? `'${text}` : text;
+      return /^\s*[=+\-@]/.test(text) ? "'" + text : text;
     };
     const escapeCsv=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;
     const rows=savingsHistoryRows.map(item=>[
       item.id,item.created_at,safeText(item.plan_name),safeText(item.movement_type),
       safeText(item.status),safeText(item.currency),item.amount,item.journal_entry_id
     ]);
-    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\\r\\n");
-    const blob=new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
+    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\r\n");
+    const blob=new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
     link.href=url;
