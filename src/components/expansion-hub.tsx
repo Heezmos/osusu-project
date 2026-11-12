@@ -6,7 +6,6 @@ import {
   Globe2, Heart, LayoutDashboard, LockKeyhole, Search, ShieldCheck, ShoppingBag,
   Smartphone, Store, Wifi, Zap
 } from "lucide-react";
-import "./expansion-hub.css";
 
 type HubSection = "Services" | "Osusu Global" | "Osusu Business";
 type Service = { id:string; name:string; category:string; description:string; icon:"phone"|"wifi"|"zap"|"bus"|"shop"; status:string };
