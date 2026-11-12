@@ -254,6 +254,26 @@ export default function OsusuPage() {
     setNotifications(current=>current.map(item=>item.id===notificationId?{...item,read_at:new Date().toISOString()}:item));
   }
 
+  function exportTransactions() {
+    if(!filteredTransactions.length) return;
+    const columns=["Transaction ID","Date","Description","Type","Direction","Status","Currency","Amount"];
+    const escapeCsv=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;
+    const rows=filteredTransactions.map(tx=>[
+      tx.id,tx.created_at,tx.description||tx.transaction_type.replaceAll("_"," "),
+      tx.transaction_type,tx.direction,tx.status,tx.currency,tx.amount
+    ]);
+    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\r\n");
+    const blob=new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;
+    link.download=`osusu-recent-transactions-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function signOut() {
     if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
@@ -401,7 +421,7 @@ export default function OsusuPage() {
       {active==="Performance"&&<>
         <div className="section-title page-section-heading"><div><h2>Financial performance</h2><p>A snapshot of the latest wallet activity returned by your account ledger.</p></div></div>
         <div className="savings-summary-grid"><article className="section-stat"><span>RECENT TRANSACTIONS</span><strong>{transactions.length}</strong><small>Latest records available (up to 20)</small></article><article className="section-stat"><span>SLE WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.SLE,"SLE")}</strong><small>From posted ledger entries</small></article><article className="section-stat"><span>USD WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.USD,"USD")}</strong><small>From posted ledger entries</small></article></div>
-        <div className="section-title"><div><h2>Activity history</h2><p>Transaction records supplied by your Osusu account.</p></div></div>
+        <div className="section-title"><div><h2>Activity history</h2><p>Transaction records supplied by your Osusu account.</p></div><button type="button" onClick={exportTransactions} disabled={!filteredTransactions.length}><ArrowDownLeft size={15}/> Export CSV</button></div>
         <section className="transactions">{filteredTransactions.length?filteredTransactions.map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">{transactionSearch.trim()?"No recent transactions match your search.":"There is no transaction history to analyse yet. Performance summaries will populate as verified transactions are recorded."}</p>}</section>
         <p className="data-note">This view reflects the latest transaction records returned by the account service. It does not represent a full historical statement or forecast.</p>
       </>}
