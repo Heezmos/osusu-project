@@ -3,10 +3,11 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import ExpansionHub from "@/components/expansion-hub";
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard, Copy, Users,
   Eye, EyeOff, Home, Landmark, LockKeyhole, LogOut, PiggyBank, Search, ShieldCheck,
-  Sparkles, TrendingUp, Wallet, X, LoaderCircle, Plus, CalendarDays, Clock3, CircleDollarSign
+  Sparkles, TrendingUp, Wallet, X, LoaderCircle, Plus, CalendarDays, Clock3, CircleDollarSign, Building2
 } from "lucide-react";
 
 type WalletRow = { id:string; currency:"SLE"|"USD"; status:string; balance:number|string };
@@ -547,7 +548,7 @@ export default function OsusuPage() {
   const name=overview?.profile?.display_name||session.user.email?.split("@")[0]||"there";
   return <main className="osusu-app">
     <aside className="side-panel"><div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span></div><p className="nav-caption">YOUR SPACE</p>
-      <nav className="primary-navigation" aria-label="Main dashboard navigation">{[{label:"Overview",Icon:Home},{label:"Payments",Icon:ArrowLeftRight},{label:"Savings Account",Icon:PiggyBank},{label:"Total Cards",Icon:CreditCard},{label:"Performance",Icon:TrendingUp},{label:"Account & Security",Icon:ShieldCheck}].map(({label,Icon})=><button type="button" key={label} className={`side-link ${active===label?"selected":""}`} aria-current={active===label?"page":undefined} onClick={()=>setActive(label)}><Icon size={18}/>{label}{active===label&&<i aria-hidden="true"/>}</button>)}</nav>
+      <nav className="primary-navigation" aria-label="Main dashboard navigation">{[{label:"Overview",Icon:Home},{label:"Payments",Icon:ArrowLeftRight},{label:"Services",Icon:Sparkles},{label:"Osusu Global",Icon:CircleDollarSign},{label:"Osusu Business",Icon:Building2},{label:"Savings Account",Icon:PiggyBank},{label:"Total Cards",Icon:CreditCard},{label:"Performance",Icon:TrendingUp},{label:"Account & Security",Icon:ShieldCheck}].map(({label,Icon})=><button type="button" key={label} className={`side-link ${active===label?"selected":""}`} aria-current={active===label?"page":undefined} onClick={()=>setActive(label)}><Icon size={18}/>{label}{active===label&&<i aria-hidden="true"/>}</button>)}</nav>
       <div className="side-spacer"/><div className="side-help"><ShieldCheck size={19}/><div><b>Your money matters</b><span>Security is part of every step.</span></div></div><button className="side-link" onClick={signOut}><LogOut size={18}/>Sign out</button><div className="profile"><span className="avatar">{String(name).slice(0,2).toUpperCase()}</span><span><b>{name}</b><small>{session.user.email}</small></span></div>
     </aside>
     <section className="workspace"><header className="topbar"><div className="breadcrumb">My Osusu <ChevronRight size={14}/><b>{active}</b></div><div className="top-tools"><label className="search" aria-label="Search recent transactions"><Search size={16}/><input type="search" value={transactionSearch} onChange={event=>setTransactionSearch(event.target.value)} placeholder="Search transactions" aria-label="Search transactions"/></label><div className="notification-wrap"><button className="bell" type="button" aria-label="Open notifications" aria-expanded={showNotifications} onClick={()=>setShowNotifications(value=>!value)}><Bell size={19}/>{notifications.some(item=>!item.read_at)&&<i/>}</button>{showNotifications&&<section className="notification-panel"><div className="notification-heading"><b>Notifications</b><span>{notifications.filter(item=>!item.read_at).length} unread</span></div>{notifications.length?notifications.map(item=><article key={item.id} className={item.read_at?"notification-item":"notification-item unread"}><div><b>{item.title}</b><small>{dateLabel(item.created_at)}</small></div><p>{item.message}</p>{!item.read_at&&<button type="button" onClick={()=>void markNotificationRead(item.id)}>Mark as read</button>}</article>):<p className="notification-empty">You&apos;re all caught up. Important account and savings updates will appear here.</p>}</section>}</div><span className="avatar top-avatar">{String(name).slice(0,2).toUpperCase()}</span></div></header>
@@ -595,6 +596,9 @@ export default function OsusuPage() {
         </section>
         <p className="data-note">Payment requests are coordination records only. Accepting a request does not debit a wallet or confirm that funds have been received.</p>
       </>}
+      {active==="Services"&&<ExpansionHub section="Services"/>}
+      {active==="Osusu Global"&&<ExpansionHub section="Osusu Global"/>}
+      {active==="Osusu Business"&&<ExpansionHub section="Osusu Business"/>}
       {active==="Account & Security"&&<>
         <div className="section-title page-section-heading"><div><h2>Account &amp; Security</h2><p>Review your sign-in identity and keep your Osusu account secure.</p></div></div>
         <section className="security-overview-card">
