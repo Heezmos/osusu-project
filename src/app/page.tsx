@@ -323,6 +323,12 @@ export default function OsusuPage() {
     return ()=>{cancelled=true;};
   },[supabase,session?.user.id,active]);
 
+  async function handleRefreshPayments(){
+    setError("");
+    try{await refreshPayments();}
+    catch(e){setError(e instanceof Error?e.message:"Unable to refresh payment requests.");}
+  }
+
   async function saveOsusuTag(event:FormEvent<HTMLFormElement>){
     event.preventDefault();if(!supabase)return;
     setTagBusy(true);setError("");setMessage("");
@@ -575,7 +581,7 @@ export default function OsusuPage() {
           </section>
           <section className="payments-panel payments-safety"><ShieldCheck size={23}/><h3>Payment safety</h3><p>Always check the recipient's displayed name and OsusuTag before sending a request. Never share your password, PIN or verification code.</p><p><b>Important:</b> accepting a request is not a transfer. Osusu does not move money through this feature.</p></section>
         </div>
-        <div className="section-title"><div><h2>Payment requests</h2><p>Incoming and outgoing requests linked to your Osusu account.</p></div><button type="button" onClick={()=>void refreshPayments()} disabled={paymentsBusy}>Refresh</button></div>
+        <div className="section-title"><div><h2>Payment requests</h2><p>Incoming and outgoing requests linked to your Osusu account.</p></div><button type="button" onClick={()=>void handleRefreshPayments()} disabled={paymentsBusy}>Refresh</button></div>
         <section className="payment-request-list" aria-live="polite">
           {paymentsBusy?<p className="empty-state">Loading payment requests…</p>:paymentRequests.length?paymentRequests.map(request=><article className="payment-request-card" key={request.id}>
             <div className="payment-request-main"><span className="overline">{request.direction==="incoming"?"REQUEST RECEIVED":"REQUEST SENT"}</span><b>{request.direction==="incoming"?"From ":"To "}{request.other_party_name}</b><small>{request.other_party_tag?"@"+request.other_party_tag:"Osusu member"} · {dateLabel(request.created_at)}</small>{request.note&&<p>{request.note}</p>}</div>
