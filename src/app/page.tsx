@@ -25,6 +25,12 @@ type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"
 
 const formatMoney = (amount:number|string,currency:"SLE"|"USD") => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(Number(amount)).replace("$",currency==="SLE"?"Le ":"$");
 const dateLabel = (value:string) => new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(value));
+const goalProgress = (balance:number|string,target:number|string|null) => {
+  const targetValue=Number(target);
+  if(target===null||!Number.isFinite(targetValue)||targetValue<=0) return 0;
+  return Math.min(100,Math.max(0,(Number(balance)/targetValue)*100));
+};
+
 
 export default function OsusuPage() {
   const [supabase,setSupabase] = useState<ReturnType<typeof createClient>|null>(null);
@@ -498,6 +504,11 @@ export default function OsusuPage() {
           <span className="goal-icon"><PiggyBank size={19}/></span>
           <div className="savings-plan-main"><b>{plan.name}</b><small>{plan.plan_name||plan.savings_type.replaceAll("_"," ")} · {plan.contribution_frequency||"Flexible"} · {plan.currency}</small><small>Status: {plan.status} · Opened {formatPlanDate(plan.starts_at)}</small><small>{plan.contribution_count} confirmed contribution{plan.contribution_count===1?"":"s"}</small><small>Scheduled amount: {plan.scheduled_amount?formatMoney(plan.scheduled_amount,plan.currency):"Not set"}</small></div>
           <div className="savings-plan-target"><small>Target</small><b>{plan.target_amount?formatMoney(plan.target_amount,plan.currency):"Not set"}</b><small>Current balance</small><b>{formatMoney(plan.current_balance,plan.currency)}</b><small>Total contributed</small><b>{formatMoney(plan.total_contributed,plan.currency)}</b><small>Withdrawals</small><b>{plan.withdrawal_count}</b></div>
+          <div className="savings-goal-progress">
+            <div className="savings-goal-progress-heading"><span>GOAL PROGRESS</span><b>{plan.target_amount&&Number(plan.target_amount)>0?`${goalProgress(plan.current_balance,plan.target_amount).toFixed(1)}%`:"No target set"}</b></div>
+            <div className="savings-goal-progress-track" role="progressbar" aria-label={`${plan.name} savings goal progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={goalProgress(plan.current_balance,plan.target_amount)}><span style={{width:`${goalProgress(plan.current_balance,plan.target_amount)}%`}}/></div>
+            <small>{plan.target_amount&&Number(plan.target_amount)>0&&goalProgress(plan.current_balance,plan.target_amount)>=100?"Target reached":plan.target_amount&&Number(plan.target_amount)>0?`${formatMoney(plan.current_balance,plan.currency)} saved towards ${formatMoney(plan.target_amount,plan.currency)}`:"Set a target to track progress"}</small>
+          </div>
           <div className="savings-plan-operations">
             {plan.funding_enabled?<><label>Amount<input type="number" min="0.01" step="0.01" value={movementAmounts[plan.id]??""} onChange={e=>setMovementAmounts(current=>({...current,[plan.id]:e.target.value}))} placeholder="Enter amount"/></label><div><button type="button" disabled={movementBusy===plan.id} onClick={()=>void moveSavingsFunds(plan,"contribution")}>Add savings</button><button type="button" className="withdraw-action" disabled={movementBusy===plan.id} onClick={()=>void moveSavingsFunds(plan,"withdrawal")}>Withdraw</button></div></>:<p><ShieldCheck size={14}/> Contributions and withdrawals are locked until this savings product is approved for funding and your account and wallet meet verification requirements.</p>}
             <div className="schedule-editor">
