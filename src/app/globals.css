@@ -125,3 +125,22 @@
 .schedule-save button:disabled{opacity:.6;cursor:wait}
 .next-due-label{display:block}
 @media(max-width:650px){.schedule-fields{grid-template-columns:1fr}.schedule-save{align-items:flex-start;flex-direction:column}.schedule-save button{width:100%}}
+
+
+/* Authenticated notification inbox */
+.notification-wrap{position:relative}
+.notification-wrap .bell{position:relative}
+.notification-wrap .bell>i{position:absolute;top:5px;right:5px;width:7px;height:7px;border:1px solid #fff;border-radius:50%;background:#b77b35}
+.notification-panel{position:absolute;z-index:30;top:46px;right:0;width:min(340px,calc(100vw - 36px));max-height:430px;overflow:auto;padding:12px;background:#fff;border:1px solid #e5ece5;border-radius:12px;box-shadow:0 16px 40px #173b251c}
+.notification-heading{display:flex;align-items:center;justify-content:space-between;padding:3px 3px 11px;border-bottom:1px solid #edf1ed}
+.notification-heading b{font-size:12px;color:#244d37}
+.notification-heading span{font-size:9px;color:#829087}
+.notification-item{padding:12px 4px;border-bottom:1px solid #f0f3ef}
+.notification-item.unread{background:#f8fbf6}
+.notification-item>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.notification-item b{font-size:10px;color:#315541}
+.notification-item small{font-size:8px;color:#8a968d}
+.notification-item p,.notification-empty{margin:7px 0;color:#718076;font-size:9px;line-height:1.6}
+.notification-item button{padding:0;border:0;background:transparent;color:#34734b;font-size:9px;font-weight:700;cursor:pointer}
+.notification-empty{padding:14px 4px}
+@media(max-width:650px){.notification-panel{right:-44px}}
