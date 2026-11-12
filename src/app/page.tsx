@@ -6,13 +6,15 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard,
   Eye, EyeOff, Home, Landmark, LockKeyhole, LogOut, PiggyBank, Search, ShieldCheck,
-  Sparkles, TrendingUp, Wallet, X, LoaderCircle
+  Sparkles, TrendingUp, Wallet, X, LoaderCircle, Plus, CalendarDays, Clock3, CircleDollarSign
 } from "lucide-react";
 
 type WalletRow = { id:string; currency:"SLE"|"USD"; status:string; balance:number|string };
 type Goal = { id:string; name:string; currency:"SLE"|"USD"; target_amount:number|string|null; status:string; savings_type:string; contribution_frequency:string|null };
 type Tx = { id:string; transaction_type:string; direction:string; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type Overview = { profile:{display_name:string|null;country_code:string;kyc_status:string;account_status:string}|null; wallets:WalletRow[]; savings_goals:Goal[]; transactions:Tx[] };
+type SavingsProduct = { id:string; plan_code:string; display_name:string; savings_type:"goal"|"scheduled"|"fixed_term"|"circle"; description:string; currency_support:string[]; term_days:number|null; annual_rate:number|string|null; rate_status:string; is_available:boolean };
+type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; total_contributed:number|string; contribution_count:number };
 
 const formatMoney = (amount:number|string,currency:"SLE"|"USD") => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(Number(amount)).replace("$",currency==="SLE"?"Le ":"$");
 const dateLabel = (value:string) => new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(value));
@@ -31,13 +33,31 @@ export default function OsusuPage() {
   const [displayName,setDisplayName] = useState("");
   const [hidden,setHidden] = useState(false);
   const [active,setActive] = useState("Overview");
+  const [savingsProducts,setSavingsProducts] = useState<SavingsProduct[]>([]);
+  const [mySavings,setMySavings] = useState<SavingsPlan[]>([]);
+  const [showCreatePlan,setShowCreatePlan] = useState(false);
+  const [savingBusy,setSavingBusy] = useState(false);
+  const [selectedPlanCode,setSelectedPlanCode] = useState("flexi-save");
+  const [planName,setPlanName] = useState("");
+  const [targetAmount,setTargetAmount] = useState("");
+  const [planCurrency,setPlanCurrency] = useState<"SLE"|"USD">("SLE");
+  const [contributionFrequency,setContributionFrequency] = useState("flexible");
+  const [scheduledAmount,setScheduledAmount] = useState("");
 
   const loadOverview = useCallback(async (client: ReturnType<typeof createClient>): Promise<Overview> => {
     const {error:initializeError} = await client.rpc("osusu_initialize_my_account");
     if (initializeError) throw initializeError;
-    const {data,error:rpcError} = await client.rpc("osusu_get_my_overview");
-    if (rpcError) throw rpcError;
-    return data as Overview;
+    const [overviewResult,productsResult,savingsResult] = await Promise.all([
+      client.rpc("osusu_get_my_overview"),
+      client.rpc("osusu_get_savings_products"),
+      client.rpc("osusu_get_my_savings")
+    ]);
+    if (overviewResult.error) throw overviewResult.error;
+    if (productsResult.error) throw productsResult.error;
+    if (savingsResult.error) throw savingsResult.error;
+    setSavingsProducts((productsResult.data??[]) as SavingsProduct[]);
+    setMySavings((savingsResult.data??[]) as SavingsPlan[]);
+    return overviewResult.data as Overview;
   },[]);
 
   useEffect(() => {
@@ -95,6 +115,29 @@ export default function OsusuPage() {
     finally{setBusy(false);}
   }
 
+  async function createSavingsPlan(event:FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if(!supabase)return;
+    setSavingBusy(true);setError("");setMessage("");
+    try {
+      const {error:planError}=await supabase.rpc("osusu_create_savings_plan",{
+        p_plan_code:selectedPlanCode,
+        p_name:planName.trim(),
+        p_target_amount:Number(targetAmount),
+        p_currency:planCurrency,
+        p_contribution_frequency:contributionFrequency,
+        p_scheduled_amount:selectedPlanCode==="scheduled-saver"?Number(scheduledAmount):null
+      });
+      if(planError)throw planError;
+      setOverview(await loadOverview(supabase));
+      setPlanName("");setTargetAmount("");setScheduledAmount("");
+      setShowCreatePlan(false);
+      setMessage("Your savings plan has been created.");
+    } catch(e) {
+      setError(e instanceof Error?e.message:"Unable to create your savings plan.");
+    } finally {setSavingBusy(false);}
+  }
+
   async function signOut() {
     if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
@@ -126,6 +169,8 @@ export default function OsusuPage() {
 
   const goals=overview?.savings_goals??[];
   const transactions=overview?.transactions??[];
+  const selectedSavingsProduct=savingsProducts.find(product=>product.plan_code===selectedPlanCode);
+  const formatPlanDate=(value:string)=>new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(value));
   const name=overview?.profile?.display_name||session.user.email?.split("@")[0]||"there";
   return <main className="osusu-app">
     <aside className="side-panel"><div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span></div><p className="nav-caption">YOUR SPACE</p>
@@ -143,11 +188,48 @@ export default function OsusuPage() {
         <section className="transactions">{transactions.length?transactions.slice(0,5).map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">No transactions yet. Verified wallet activity will appear here.</p>}</section>
       </>}
       {active==="Savings Account"&&<>
-        <div className="section-title page-section-heading"><div><h2>Your savings accounts</h2><p>Review the savings plans linked to your Osusu profile.</p></div></div>
-        <div className="savings-summary-grid"><article className="section-stat"><span>ACTIVE SAVINGS PLANS</span><strong>{goals.filter(g=>g.status==="active").length}</strong><small>Plans marked active</small></article><article className="section-stat"><span>TOTAL SAVINGS PLANS</span><strong>{goals.length}</strong><small>Personal savings records</small></article><article className="section-stat"><span>WALLET CURRENCIES</span><strong>{overview?.wallets.length??0}</strong><small>SLE and USD wallet accounts</small></article></div>
-        <div className="section-title"><div><h2>My savings plans</h2><p>Targets and plan details currently recorded for your account.</p></div></div>
-        <div className="savings-plan-list">{goals.length?goals.map(goal=><article className="savings-plan-card" key={goal.id}><span className="goal-icon"><PiggyBank size={19}/></span><div className="savings-plan-main"><b>{goal.name}</b><small>{goal.savings_type.replaceAll("_"," ")} · {goal.contribution_frequency?.replaceAll("_"," ")||"Frequency not set"}</small><small>Status: {goal.status}</small></div><div className="savings-plan-target"><small>Target amount</small><b>{goal.target_amount?formatMoney(goal.target_amount,goal.currency):"Not set"}</b></div></article>):<div className="empty-state goal-empty">You do not have any savings plans yet. Once a savings plan is created and linked to your account, it will appear here.</div>}</div>
-        <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Savings information is read-only at this stage</b><small>Plan creation, contributions, withdrawals and returns will be enabled only after the required backend workflows and approvals are complete.</small></div></div>
+        <div className="section-title page-section-heading"><div><h2>Osusu Savings</h2><p>Choose a savings style, create a plan and track your progress.</p></div><button type="button" onClick={()=>setShowCreatePlan(!showCreatePlan)}><Plus size={15}/>{showCreatePlan?"Close setup":"Create savings plan"}</button></div>
+        {message&&<div className="auth-message savings-message">{message}</div>}
+        <div className="savings-summary-grid">
+          <article className="section-stat"><span>MY SAVINGS PLANS</span><strong>{mySavings.length}</strong><small>Plans opened in your account</small></article>
+          <article className="section-stat"><span>PLANS WITH CONTRIBUTIONS</span><strong>{mySavings.filter(plan=>Number(plan.total_contributed)>0).length}</strong><small>Plans with confirmed ledger-linked contributions</small></article>
+          <article className="section-stat"><span>AVAILABLE PLAN TYPES</span><strong>{savingsProducts.filter(product=>product.is_available).length}</strong><small>Currently open for setup</small></article>
+        </div>
+        {showCreatePlan&&<section className="create-savings-panel">
+          <div className="create-savings-heading"><span className="goal-icon"><PiggyBank size={19}/></span><div><h2>Set up a savings plan</h2><p>Choose an available plan and set your target and contribution schedule.</p></div></div>
+          <div className="savings-product-picker">{savingsProducts.map(product=><button type="button" key={product.id} className={selectedPlanCode===product.plan_code?"savings-product-option selected":"savings-product-option"} onClick={()=>setSelectedPlanCode(product.plan_code)} disabled={!product.is_available}>
+            <span className="product-option-top"><b>{product.display_name}</b><span className={product.is_available?"product-state available":"product-state"}>{product.is_available?"Available":"Coming soon"}</span></span>
+            <small>{product.description}</small>
+            {product.rate_status==="approved"&&product.annual_rate!==null?<strong>{Number(product.annual_rate).toFixed(2)}% p.a.</strong>:product.rate_status==="pending_approval"?<strong className="rate-pending">Returns pending approval</strong>:<strong>No interest advertised</strong>}
+          </button>)}</div>
+          {selectedSavingsProduct&&<form className="savings-form" onSubmit={createSavingsPlan}>
+            <label>Plan name<input value={planName} onChange={e=>setPlanName(e.target.value)} placeholder="e.g. New laptop fund" minLength={2} maxLength={80} required/></label>
+            <div className="savings-form-row">
+              <label>Target amount<input type="number" min="0.01" step="0.01" value={targetAmount} onChange={e=>setTargetAmount(e.target.value)} placeholder="Enter target" required/></label>
+              <label>Currency<select value={planCurrency} onChange={e=>setPlanCurrency(e.target.value as "SLE"|"USD")}><option value="SLE">SLE · Leone</option><option value="USD">USD · US Dollar</option></select></label>
+            </div>
+            <div className="savings-form-row">
+              <label>Contribution frequency<select value={contributionFrequency} onChange={e=>setContributionFrequency(e.target.value)}><option value="flexible">Flexible</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
+              {selectedPlanCode==="scheduled-saver"&&<label>Scheduled contribution amount<input type="number" min="0.01" step="0.01" value={scheduledAmount} onChange={e=>setScheduledAmount(e.target.value)} placeholder="Contribution amount" required/></label>}
+            </div>
+            {selectedSavingsProduct.rate_status==="pending_approval"&&<div className="savings-caution"><ShieldCheck size={16}/> This product rate, term and maturity conditions have not yet received approval. It cannot be opened yet.</div>}
+            <div className="savings-form-actions"><button type="button" className="secondary-action" onClick={()=>setShowCreatePlan(false)}>Cancel</button><button className="primary-action" type="submit" disabled={savingBusy||!selectedSavingsProduct.is_available}>{savingBusy?<LoaderCircle className="spin" size={16}/>:<Plus size={16}/>} Create plan</button></div>
+          </form>}
+        </section>}
+        <div className="section-title"><div><h2>Savings options</h2><p>Plan availability and returns status.</p></div></div>
+        <div className="savings-catalogue">{savingsProducts.map(product=><article className="savings-catalogue-card" key={product.id}>
+          <div className="catalogue-card-top"><span className="goal-icon">{product.savings_type==="fixed_term"?<Clock3 size={18}/>:product.savings_type==="scheduled"?<CalendarDays size={18}/>:product.savings_type==="circle"?<CircleDollarSign size={18}/>:<PiggyBank size={18}/>}</span><span className={product.is_available?"product-state available":"product-state"}>{product.is_available?"Open":"Coming soon"}</span></div>
+          <h3>{product.display_name}</h3><p>{product.description}</p>
+          <div className="catalogue-rate">{product.rate_status==="approved"&&product.annual_rate!==null?<><b>{Number(product.annual_rate).toFixed(2)}%</b><small>Indicative annual rate</small></>:product.rate_status==="pending_approval"?<><b>Rate pending</b><small>Subject to approval and published terms</small></>:<><b>Flexible saving</b><small>No interest or return currently attached</small></>}</div>
+          <button type="button" disabled={!product.is_available} onClick={()=>{setSelectedPlanCode(product.plan_code);setShowCreatePlan(true);}}>{product.is_available?"Set up this plan":"Not available yet"}</button>
+        </article>)}</div>
+        <div className="section-title"><div><h2>My savings plans</h2><p>Your saved goals, schedules and contribution records.</p></div></div>
+        <div className="savings-plan-list">{mySavings.length?mySavings.map(plan=><article className="savings-plan-card" key={plan.id}>
+          <span className="goal-icon"><PiggyBank size={19}/></span>
+          <div className="savings-plan-main"><b>{plan.name}</b><small>{plan.plan_name||plan.savings_type.replaceAll("_"," ")} · {plan.contribution_frequency||"Flexible"} · {plan.currency}</small><small>Status: {plan.status} · Opened {formatPlanDate(plan.starts_at)}</small><small>{plan.contribution_count} confirmed contribution{plan.contribution_count===1?"":"s"}</small><small>Scheduled amount: {plan.scheduled_amount?formatMoney(plan.scheduled_amount,plan.currency):"Not set"}</small></div>
+          <div className="savings-plan-target"><small>Target</small><b>{plan.target_amount?formatMoney(plan.target_amount,plan.currency):"Not set"}</b><small>Contributed</small><b>{formatMoney(plan.total_contributed,plan.currency)}</b></div>
+        </article>):<div className="empty-state goal-empty">You have not created a savings plan yet. Choose an available option above to get started.</div>}</div>
+        <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Your savings are tracked securely</b><small>Plan setup is active. Contributions, withdrawals, automatic collections and interest payouts require verified funding rails and approved financial terms; they are not simulated.</small></div></div>
       </>}
       {active==="Total Cards"&&<>
         <div className="section-title page-section-heading"><div><h2>Osusu Dash Cards</h2><p>Manage the cards connected to your Osusu account.</p></div></div>
