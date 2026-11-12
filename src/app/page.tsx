@@ -17,6 +17,7 @@ type SavingsProduct = { id:string; plan_code:string; display_name:string; saving
 type SavingsCircleMember = {user_id:string;display_name:string;member_role:string;joined_at:string|null};
 type SavingsCircle = {id:string;name:string;owner_user_id:string;currency:"SLE"|"USD";contribution_amount:number|string;frequency:string;status:string;max_members:number;invite_code:string|null;invitation_expires_at:string|null;is_owner:boolean;member_count:number;members:SavingsCircleMember[];created_at:string};
 type OsusuNotification = { id:string; notification_type:string; title:string; message:string; read_at:string|null; created_at:string };
+type TransactionHistoryResult = { transactions:Tx[]; total_count:number; limit:number; offset:number };
 type SavingsActivity = { id:string; movement_type:"contribution"|"withdrawal"; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; funding_enabled:boolean; next_contribution_at:string|null; reminder_enabled:boolean; current_balance:number|string; total_contributed:number|string; contribution_count:number; withdrawal_count:number; recent_activity:SavingsActivity[] };
 
@@ -38,6 +39,14 @@ export default function OsusuPage() {
   const [hidden,setHidden] = useState(false);
   const [active,setActive] = useState("Overview");
   const [transactionSearch,setTransactionSearch] = useState("");
+  const [historySearch,setHistorySearch] = useState("");
+  const [historyStart,setHistoryStart] = useState("");
+  const [historyEnd,setHistoryEnd] = useState("");
+  const [historyPage,setHistoryPage] = useState(1);
+  const [historyRows,setHistoryRows] = useState<Tx[]>([]);
+  const [historyCount,setHistoryCount] = useState(0);
+  const [historyLoading,setHistoryLoading] = useState(false);
+  const [historyError,setHistoryError] = useState("");
   const [savingsProducts,setSavingsProducts] = useState<SavingsProduct[]>([]);
   const [mySavings,setMySavings] = useState<SavingsPlan[]>([]);
   const [notifications,setNotifications] = useState<OsusuNotification[]>([]);
@@ -255,29 +264,65 @@ export default function OsusuPage() {
   }
 
   function exportTransactions() {
-    if(!filteredTransactions.length) return;
+    if(!historyRows.length) return;
     const columns=["Transaction ID","Date","Description","Type","Direction","Status","Currency","Amount"];
+    const safeText=(value:unknown)=>{
+      const text=String(value??"");
+      return /^\s*[=+\-@]/.test(text) ? `'${text}` : text;
+    };
     const escapeCsv=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;
-    const rows=filteredTransactions.map(tx=>[
-      tx.id,tx.created_at,tx.description||tx.transaction_type.replaceAll("_"," "),
-      tx.transaction_type,tx.direction,tx.status,tx.currency,tx.amount
+    const rows=historyRows.map(tx=>[
+      tx.id,tx.created_at,safeText(tx.description||tx.transaction_type.replaceAll("_"," ")),
+      safeText(tx.transaction_type),safeText(tx.direction),safeText(tx.status),safeText(tx.currency),tx.amount
     ]);
     const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\r\n");
     const blob=new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
     link.href=url;
-    link.download=`osusu-recent-transactions-${new Date().toISOString().slice(0,10)}.csv`;
+    link.download=`osusu-transactions-page-${historyPage}-${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
   async function signOut() {
     if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
   }
+
+  useEffect(()=>{
+    if(!supabase || !session || active!=="Performance") return;
+    let cancelled=false;
+    const loadHistory=async()=>{
+      setHistoryLoading(true);
+      setHistoryError("");
+      const toExclusive=historyEnd
+        ? new Date(new Date(`${historyEnd}T00:00:00.000Z`).getTime()+86400000).toISOString()
+        : null;
+      const {data,error}=await supabase.rpc("osusu_get_my_transactions",{
+        p_from:historyStart?`${historyStart}T00:00:00+00:00`:null,
+        p_to:toExclusive,
+        p_limit:25,
+        p_offset:(historyPage-1)*25,
+        p_search:historySearch.trim()||null
+      });
+      if(cancelled)return;
+      if(error){
+        setHistoryError(error.message);
+        setHistoryRows([]);
+        setHistoryCount(0);
+      }else{
+        const result=data as TransactionHistoryResult;
+        setHistoryRows(result.transactions??[]);
+        setHistoryCount(Number(result.total_count)||0);
+      }
+      setHistoryLoading(false);
+    };
+    void loadHistory();
+    return ()=>{cancelled=true;};
+  },[supabase,session?.user.id,active,historyStart,historyEnd,historyPage,historySearch]);
 
   const totals=useMemo(()=>{
     const byCurrency:{SLE:number;USD:number}={SLE:0,USD:0};
@@ -312,12 +357,29 @@ export default function OsusuPage() {
   const name=overview?.profile?.display_name||session.user.email?.split("@")[0]||"there";
   return <main className="osusu-app">
     <aside className="side-panel"><div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span></div><p className="nav-caption">YOUR SPACE</p>
-      <nav className="primary-navigation" aria-label="Main dashboard navigation">{["Overview","Savings Account","Total Cards","Performance"].map((item,i)=><button type="button" key={item} className={`side-link ${active===item?"selected":""}`} aria-current={active===item?"page":undefined} onClick={()=>setActive(item)}>{[Home,PiggyBank,CreditCard,TrendingUp].map((Icon,j)=>i===j?<Icon key={item} size={18}/>:null)}{item}{active===item&&<i aria-hidden="true"/>}</button>)}</nav>
+      <nav className="primary-navigation" aria-label="Main dashboard navigation">{[{label:"Overview",Icon:Home},{label:"Savings Account",Icon:PiggyBank},{label:"Total Cards",Icon:CreditCard},{label:"Performance",Icon:TrendingUp},{label:"Account & Security",Icon:ShieldCheck}].map(({label,Icon})=><button type="button" key={label} className={`side-link ${active===label?"selected":""}`} aria-current={active===label?"page":undefined} onClick={()=>setActive(label)}><Icon size={18}/>{label}{active===label&&<i aria-hidden="true"/>}</button>)}</nav>
       <div className="side-spacer"/><div className="side-help"><ShieldCheck size={19}/><div><b>Your money matters</b><span>Security is part of every step.</span></div></div><button className="side-link" onClick={signOut}><LogOut size={18}/>Sign out</button><div className="profile"><span className="avatar">{String(name).slice(0,2).toUpperCase()}</span><span><b>{name}</b><small>{session.user.email}</small></span></div>
     </aside>
     <section className="workspace"><header className="topbar"><div className="breadcrumb">My Osusu <ChevronRight size={14}/><b>{active}</b></div><div className="top-tools"><label className="search" aria-label="Search recent transactions"><Search size={16}/><input type="search" value={transactionSearch} onChange={event=>setTransactionSearch(event.target.value)} placeholder="Search transactions" aria-label="Search transactions"/></label><div className="notification-wrap"><button className="bell" type="button" aria-label="Open notifications" aria-expanded={showNotifications} onClick={()=>setShowNotifications(value=>!value)}><Bell size={19}/>{notifications.some(item=>!item.read_at)&&<i/>}</button>{showNotifications&&<section className="notification-panel"><div className="notification-heading"><b>Notifications</b><span>{notifications.filter(item=>!item.read_at).length} unread</span></div>{notifications.length?notifications.map(item=><article key={item.id} className={item.read_at?"notification-item":"notification-item unread"}><div><b>{item.title}</b><small>{dateLabel(item.created_at)}</small></div><p>{item.message}</p>{!item.read_at&&<button type="button" onClick={()=>void markNotificationRead(item.id)}>Mark as read</button>}</article>):<p className="notification-empty">You&apos;re all caught up. Important account and savings updates will appear here.</p>}</section>}</div><span className="avatar top-avatar">{String(name).slice(0,2).toUpperCase()}</span></div></header>
       <div className="page-content"><div className="welcome"><div><span className="overline">YOUR MONEY. YOUR FUTURE.</span><h1>Welcome back, {name.split(" ")[0]}</h1><p>{active==="Overview"?"Your Osusu account overview, securely connected.":active==="Savings Account"?"Your savings plans and account details.":active==="Total Cards"?"Your Osusu Dash Card services and status.":"A view of your recorded wallet activity and balances."}</p></div><span className="date-pill"><span/> {overview?.profile?.account_status??"Status unavailable"}</span></div>
       {error&&<div className="notice"><ShieldCheck size={17}/><span>{error}</span><button onClick={()=>setError("")}><X size={16}/></button></div>}
+      {active==="Account & Security"&&<>
+        <div className="section-title page-section-heading"><div><h2>Account &amp; Security</h2><p>Review your sign-in identity and keep your Osusu account secure.</p></div></div>
+        <section className="security-overview-card">
+          <div className="security-overview-icon"><ShieldCheck size={23}/></div>
+          <div><span className="overline">ACCOUNT PROTECTION</span><h2>Your account security</h2><p>Osusu uses secure authentication for account access. Keep your email address current and never share your password or verification links.</p></div>
+        </section>
+        <div className="section-title"><div><h2>Account details</h2><p>Information currently associated with your signed-in account.</p></div></div>
+        <div className="security-details-grid">
+          <article className="security-detail"><small>REGISTERED EMAIL</small><b>{session.user.email||"Not available"}</b><span>{session.user.email_confirmed_at?"Email confirmed":"Email confirmation pending"}</span></article>
+          <article className="security-detail"><small>ACCOUNT CREATED</small><b>{session.user.created_at?dateLabel(session.user.created_at):"Not available"}</b><span>Osusu sign-up date</span></article>
+          <article className="security-detail"><small>LAST SIGN-IN</small><b>{session.user.last_sign_in_at?dateLabel(session.user.last_sign_in_at):"Not available"}</b><span>Most recent authentication recorded by Supabase</span></article>
+          <article className="security-detail"><small>ACCOUNT STATUS</small><b>{overview?.profile?.account_status??"Not available"}</b><span>Current account profile status</span></article>
+        </div>
+        <div className="section-title"><div><h2>Password &amp; sign-in</h2><p>Use the secure email recovery process if you need to change a forgotten password.</p></div></div>
+        <section className="security-action-card"><div><b>Reset your password</b><p>We will send a password recovery link to your registered email address. Make sure Supabase has the production reset URL allowlisted before relying on this flow.</p></div><a className="security-reset-link" href="/forgot-password">Request password reset <ChevronRight size={15}/></a></section>
+        <section className="security-note"><ShieldCheck size={17}/><p>For your protection, never share one-time codes, password reset links or account credentials. If you do not recognise a sign-in, reset your password and sign out of this session.</p></section>
+      </>}
       {active==="Overview"&&<>
         <div className="account-grid"><section className="savings-hero"><div className="hero-top"><span><Wallet size={17}/> WALLET BALANCES</span><button onClick={()=>setHidden(!hidden)} aria-label={hidden?"Show balances":"Hide balances"}>{hidden?<Eye size={17}/>:<EyeOff size={17}/>}</button></div><div className="balance-pair"><div><small>SLE WALLET</small><div className="hero-balance">{hidden?"••••••":overview?formatMoney(totals.SLE,"SLE"):"Unavailable"}</div></div><div><small>USD WALLET</small><div className="hero-balance">{hidden?"••••••":overview?formatMoney(totals.USD,"USD"):"Unavailable"}</div></div></div><div className="hero-growth"><Sparkles size={14}/> Calculated from posted ledger entries</div><div className="hero-actions"><button className="lime-action" disabled title="Available after authorised payment integration"><ArrowDownLeft size={16}/> Add Money</button><button className="blue-action" disabled title="Available after authorised payment integration"><ArrowLeftRight size={16}/> Transfer</button></div></section><section className="spend-card"><div className="spend-title"><span>ACCOUNT STATUS</span><span className="spend-mark"><ShieldCheck size={16}/></span></div><h2>{overview?(overview.profile?.kyc_status==="verified"?"Verified":"Verification pending"):"Status unavailable"}</h2><p>Identity and account checks</p><button disabled>Manage verification <ChevronRight size={15}/></button></section></div>
         <div className="section-title"><div><h2>My savings goals</h2><p>Your personal and scheduled savings plans.</p></div><button onClick={()=>setActive("Savings Account")}><PiggyBank size={15}/> View savings</button></div>
@@ -419,11 +481,21 @@ export default function OsusuPage() {
         <div className="card-feature-grid"><article><LockKeyhole size={19}/><b>Freeze and unfreeze</b><small>Temporarily secure an issued card.</small></article><article><Wallet size={19}/><b>Card spending</b><small>Review card transactions and spending.</small></article><article><ShieldCheck size={19}/><b>Card security</b><small>Manage limits and security settings.</small></article></div>
       </>}
       {active==="Performance"&&<>
-        <div className="section-title page-section-heading"><div><h2>Financial performance</h2><p>A snapshot of the latest wallet activity returned by your account ledger.</p></div></div>
-        <div className="savings-summary-grid"><article className="section-stat"><span>RECENT TRANSACTIONS</span><strong>{transactions.length}</strong><small>Latest records available (up to 20)</small></article><article className="section-stat"><span>SLE WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.SLE,"SLE")}</strong><small>From posted ledger entries</small></article><article className="section-stat"><span>USD WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.USD,"USD")}</strong><small>From posted ledger entries</small></article></div>
-        <div className="section-title"><div><h2>Activity history</h2><p>Transaction records supplied by your Osusu account.</p></div><button type="button" onClick={exportTransactions} disabled={!filteredTransactions.length}><ArrowDownLeft size={15}/> Export CSV</button></div>
-        <section className="transactions">{filteredTransactions.length?filteredTransactions.map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">{transactionSearch.trim()?"No recent transactions match your search.":"There is no transaction history to analyse yet. Performance summaries will populate as verified transactions are recorded."}</p>}</section>
-        <p className="data-note">This view reflects the latest transaction records returned by the account service. It does not represent a full historical statement or forecast.</p>
+        <div className="section-title page-section-heading"><div><h2>Financial performance</h2><p>Your wallet activity and transaction history, retrieved securely for your account.</p></div></div>
+        <div className="savings-summary-grid"><article className="section-stat"><span>FILTERED TRANSACTIONS</span><strong>{historyCount}</strong><small>Matching records across your account</small></article><article className="section-stat"><span>SLE WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.SLE,"SLE")}</strong><small>From posted ledger entries</small></article><article className="section-stat"><span>USD WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.USD,"USD")}</strong><small>From posted ledger entries</small></article></div>
+        <div className="section-title"><div><h2>Transaction history</h2><p>Search and filter your account records by date, description, type, status or amount.</p></div><button type="button" onClick={exportTransactions} disabled={!historyRows.length||historyLoading}><ArrowDownLeft size={15}/> Export this page</button></div>
+        <section className="history-filters" aria-label="Transaction history filters">
+          <label><span>SEARCH</span><input type="search" value={historySearch} maxLength={100} onChange={event=>{setHistorySearch(event.target.value);setHistoryPage(1);}} placeholder="Description, type, status, amount"/></label>
+          <label><span>FROM</span><input type="date" value={historyStart} max={historyEnd||undefined} onChange={event=>{setHistoryStart(event.target.value);setHistoryPage(1);}}/></label>
+          <label><span>TO</span><input type="date" value={historyEnd} min={historyStart||undefined} onChange={event=>{setHistoryEnd(event.target.value);setHistoryPage(1);}}/></label>
+          <button type="button" className="history-clear" onClick={()=>{setHistorySearch("");setHistoryStart("");setHistoryEnd("");setHistoryPage(1);}}>Clear filters</button>
+        </section>
+        {historyError&&<div className="notice" role="alert"><ShieldCheck size={16}/><span>{historyError}</span></div>}
+        <section className="transactions" aria-live="polite">
+          {historyLoading?<p className="empty-state">Loading your transaction history…</p>:historyRows.length?historyRows.map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status} · {tx.transaction_type.replaceAll("_"," ")}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">No transactions match these filters.</p>}
+        </section>
+        <div className="history-pagination"><span>Showing {historyCount===0?0:(historyPage-1)*25+1}–{Math.min(historyPage*25,historyCount)} of {historyCount}</span><div><button type="button" onClick={()=>setHistoryPage(page=>Math.max(1,page-1))} disabled={historyPage===1||historyLoading}>Previous</button><span>Page {historyPage} of {Math.max(1,Math.ceil(historyCount/25))}</span><button type="button" onClick={()=>setHistoryPage(page=>page+1)} disabled={historyPage*25>=historyCount||historyLoading}>Next</button></div></div>
+        <p className="data-note">History is limited to records associated with your own Osusu wallets. Export downloads the currently displayed page (up to 25 matching records), not all pages at once.</p>
       </>}
       <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Secure account connection</b><small>Balances are read from posted ledger entries. Money movement is not enabled in this preview.</small></div></div>
       <footer><span>© 2026 Osusu · A Delight Ventures product</span><span><ShieldCheck size={13}/> Secure connection <i/> Sierra Leone</span></footer><p className="disclaimer">OSUSU EARLY ACCESS · Deposits, withdrawals, transfers, card issuance and interest-bearing products remain disabled pending authorised integrations and approvals.</p>
