@@ -213,3 +213,18 @@
 .security-note svg{flex:0 0 auto;margin-top:1px}
 .security-note p{margin:0;font-size:10px;line-height:1.65}
 @media(max-width:650px){.security-details-grid{grid-template-columns:1fr}.security-action-card{align-items:flex-start;flex-direction:column}.security-reset-link{width:100%;justify-content:center}.security-overview-card{padding:17px}}
+
+
+/* Paginated transaction history */
+.history-filters{display:grid;grid-template-columns:minmax(190px,2fr) repeat(2,minmax(130px,1fr)) auto;gap:10px;align-items:end;padding:16px;margin:14px 0 18px;background:#fff;border:1px solid #e2eae1;border-radius:12px}
+.history-filters label{display:grid;gap:7px;min-width:0}
+.history-filters label span{font-size:9px;font-weight:800;letter-spacing:.8px;color:#59685f}
+.history-filters input{width:100%;min-width:0;height:40px;padding:0 10px;border:1px solid #dce6dc;border-radius:8px;background:#fff;color:#244b38;font:12px Arial,Helvetica,sans-serif}
+.history-filters input:focus-visible{outline:2px solid #78a889;outline-offset:2px}
+.history-clear,.history-pagination button{height:40px;padding:0 13px;border:1px solid #dce6dc;border-radius:8px;background:#f6f9f5;color:#315b43;font-size:10px;font-weight:700;cursor:pointer}
+.history-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0;color:#617168;font-size:10px}
+.history-pagination>div{display:flex;align-items:center;gap:12px}
+.history-pagination button:disabled{opacity:.4;cursor:not-allowed}
+.history-pagination button:focus-visible,.history-clear:focus-visible{outline:2px solid #78a889;outline-offset:2px}
+@media(max-width:760px){.history-filters{grid-template-columns:1fr 1fr}.history-filters label:first-child{grid-column:1/-1}.history-clear{grid-column:1/-1}}
+@media(max-width:480px){.history-pagination{align-items:flex-start;flex-direction:column}.history-pagination>div{width:100%;justify-content:space-between}}
