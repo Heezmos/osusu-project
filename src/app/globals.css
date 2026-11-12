@@ -198,7 +198,7 @@
 .security-overview-card{display:flex;align-items:flex-start;gap:16px;padding:22px;background:#fff;border:1px solid #dfe9df;border-radius:14px;margin:18px 0 28px}
 .security-overview-icon{width:46px;height:46px;flex:0 0 46px;display:grid;place-items:center;border-radius:13px;background:#edf5ed;color:#286447}
 .security-overview-card h2{font-size:17px;color:#214634;margin:7px 0}
-.security-overview-card p,.security-action-card p{font-size:11px;line-height:1.7;color:#849188;margin:0;max-width:680px}
+.security-overview-card p,.security-action-card p{font-size:11px;line-height:1.7;color:#59685f;margin:0;max-width:680px}
 .security-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0 28px}
 .security-detail{display:flex;flex-direction:column;gap:7px;padding:17px;background:#fff;border:1px solid #e4ebe3;border-radius:12px;min-width:0}
 .security-detail small{font-size:9px;letter-spacing:1px;font-weight:800;color:#52645a}
