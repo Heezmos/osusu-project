@@ -236,3 +236,39 @@
 .savings-activity-filters{grid-template-columns:minmax(190px,2fr) repeat(4,minmax(125px,1fr)) auto}
 @media(max-width:1050px){.savings-activity-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.savings-activity-filters label:first-child{grid-column:span 2}.savings-activity-filters .history-clear{grid-column:auto}}
 @media(max-width:650px){.savings-activity-filters{grid-template-columns:1fr 1fr}.savings-activity-filters label:first-child{grid-column:1/-1}.savings-activity-filters .history-clear{grid-column:1/-1}}
+
+
+/* Savings goal progress */
+.savings-plan-card{flex-wrap:wrap}
+.savings-goal-progress{flex:1 1 190px;min-width:150px;max-width:280px;display:grid;gap:8px}
+.savings-goal-progress-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.savings-goal-progress-heading span{font-size:8px;letter-spacing:.9px;font-weight:800;color:#718177}
+.savings-goal-progress-heading b{font-size:11px;color:#28563d}
+.savings-goal-progress-track{height:8px;overflow:hidden;border-radius:99px;background:#edf2eb}
+.savings-goal-progress-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#176847,#9bc84c);transition:width .25s ease}
+.savings-goal-progress>small{font-size:9px;line-height:1.5;color:#748379}
+@media(max-width:650px){.savings-goal-progress{flex:1 1 100%;max-width:none;margin-left:36px}}
+
+/* Keep savings goal details readable on tablet widths */
+@media(min-width:651px) and (max-width:850px){
+  .savings-plan-card{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:start}
+  .savings-plan-card>.goal-icon{grid-column:1;grid-row:1}
+  .savings-plan-main{grid-column:2;grid-row:1}
+  .savings-plan-target{grid-column:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px;text-align:left}
+  .savings-goal-progress{grid-column:2;min-width:0;max-width:none;margin-left:0}
+  .savings-plan-operations{grid-column:2}
+}
+
+/* Mobile-first savings plan card layout */
+@media(max-width:650px){
+  .savings-plan-card{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:start;gap:12px}
+  .savings-plan-card>.goal-icon{grid-column:1;grid-row:1}
+  .savings-plan-main{grid-column:2;grid-row:1}
+  .savings-plan-target{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px;margin:0;text-align:left}
+  .savings-plan-target small{margin:0}
+  .savings-plan-target small:not(:first-child){margin-top:0}
+  .savings-plan-target b{overflow-wrap:anywhere}
+  .savings-goal-progress{grid-column:1/-1;min-width:0;max-width:none;margin:0}
+  .savings-plan-operations{grid-column:1/-1;width:100%}
+  .savings-plan-operations>label{max-width:none}
+}
