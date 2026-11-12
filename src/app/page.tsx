@@ -17,6 +17,7 @@ type SavingsProduct = { id:string; plan_code:string; display_name:string; saving
 type SavingsCircleMember = {user_id:string;display_name:string;member_role:string;joined_at:string|null};
 type SavingsCircle = {id:string;name:string;owner_user_id:string;currency:"SLE"|"USD";contribution_amount:number|string;frequency:string;status:string;max_members:number;invite_code:string|null;invitation_expires_at:string|null;is_owner:boolean;member_count:number;members:SavingsCircleMember[];created_at:string};
 type OsusuNotification = { id:string; notification_type:string; title:string; message:string; read_at:string|null; created_at:string };
+type TransactionHistoryResult = { transactions:Tx[]; total_count:number; limit:number; offset:number };
 type SavingsActivity = { id:string; movement_type:"contribution"|"withdrawal"; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; funding_enabled:boolean; next_contribution_at:string|null; reminder_enabled:boolean; current_balance:number|string; total_contributed:number|string; contribution_count:number; withdrawal_count:number; recent_activity:SavingsActivity[] };
 
@@ -38,6 +39,14 @@ export default function OsusuPage() {
   const [hidden,setHidden] = useState(false);
   const [active,setActive] = useState("Overview");
   const [transactionSearch,setTransactionSearch] = useState("");
+  const [historySearch,setHistorySearch] = useState("");
+  const [historyStart,setHistoryStart] = useState("");
+  const [historyEnd,setHistoryEnd] = useState("");
+  const [historyPage,setHistoryPage] = useState(1);
+  const [historyRows,setHistoryRows] = useState<Tx[]>([]);
+  const [historyCount,setHistoryCount] = useState(0);
+  const [historyLoading,setHistoryLoading] = useState(false);
+  const [historyError,setHistoryError] = useState("");
   const [savingsProducts,setSavingsProducts] = useState<SavingsProduct[]>([]);
   const [mySavings,setMySavings] = useState<SavingsPlan[]>([]);
   const [notifications,setNotifications] = useState<OsusuNotification[]>([]);
@@ -255,19 +264,19 @@ export default function OsusuPage() {
   }
 
   function exportTransactions() {
-    if(!filteredTransactions.length) return;
+    if(!historyRows.length) return;
     const columns=["Transaction ID","Date","Description","Type","Direction","Status","Currency","Amount"];
     const escapeCsv=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;
-    const rows=filteredTransactions.map(tx=>[
+    const rows=historyRows.map(tx=>[
       tx.id,tx.created_at,tx.description||tx.transaction_type.replaceAll("_"," "),
       tx.transaction_type,tx.direction,tx.status,tx.currency,tx.amount
     ]);
-    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\r\n");
-    const blob=new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
+    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\\r\\n");
+    const blob=new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
     link.href=url;
-    link.download=`osusu-recent-transactions-${new Date().toISOString().slice(0,10)}.csv`;
+    link.download=`osusu-transactions-page-${historyPage}-${new Date().toISOString().slice(0,10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -278,6 +287,38 @@ export default function OsusuPage() {
     if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
   }
+
+  useEffect(()=>{
+    if(!supabase || !session || active!=="Performance") return;
+    let cancelled=false;
+    const loadHistory=async()=>{
+      setHistoryLoading(true);
+      setHistoryError("");
+      const toExclusive=historyEnd
+        ? new Date(new Date(`${historyEnd}T00:00:00.000Z`).getTime()+86400000).toISOString()
+        : null;
+      const {data,error}=await supabase.rpc("osusu_get_my_transactions",{
+        p_from:historyStart?`${historyStart}T00:00:00+00:00`:null,
+        p_to:toExclusive,
+        p_limit:25,
+        p_offset:(historyPage-1)*25,
+        p_search:historySearch.trim()||null
+      });
+      if(cancelled)return;
+      if(error){
+        setHistoryError(error.message);
+        setHistoryRows([]);
+        setHistoryCount(0);
+      }else{
+        const result=data as TransactionHistoryResult;
+        setHistoryRows(result.transactions??[]);
+        setHistoryCount(Number(result.total_count)||0);
+      }
+      setHistoryLoading(false);
+    };
+    void loadHistory();
+    return ()=>{cancelled=true;};
+  },[supabase,session?.user.id,active,historyStart,historyEnd,historyPage,historySearch]);
 
   const totals=useMemo(()=>{
     const byCurrency:{SLE:number;USD:number}={SLE:0,USD:0};
@@ -436,12 +477,22 @@ export default function OsusuPage() {
         <div className="card-feature-grid"><article><LockKeyhole size={19}/><b>Freeze and unfreeze</b><small>Temporarily secure an issued card.</small></article><article><Wallet size={19}/><b>Card spending</b><small>Review card transactions and spending.</small></article><article><ShieldCheck size={19}/><b>Card security</b><small>Manage limits and security settings.</small></article></div>
       </>}
       {active==="Performance"&&<>
-        <div className="section-title page-section-heading"><div><h2>Financial performance</h2><p>A snapshot of the latest wallet activity returned by your account ledger.</p></div></div>
-        <div className="savings-summary-grid"><article className="section-stat"><span>RECENT TRANSACTIONS</span><strong>{transactions.length}</strong><small>Latest records available (up to 20)</small></article><article className="section-stat"><span>SLE WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.SLE,"SLE")}</strong><small>From posted ledger entries</small></article><article className="section-stat"><span>USD WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.USD,"USD")}</strong><small>From posted ledger entries</small></article></div>
-        <div className="section-title"><div><h2>Activity history</h2><p>Transaction records supplied by your Osusu account.</p></div><button type="button" onClick={exportTransactions} disabled={!filteredTransactions.length}><ArrowDownLeft size={15}/> Export CSV</button></div>
-        <section className="transactions">{filteredTransactions.length?filteredTransactions.map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">{transactionSearch.trim()?"No recent transactions match your search.":"There is no transaction history to analyse yet. Performance summaries will populate as verified transactions are recorded."}</p>}</section>
-        <p className="data-note">This view reflects the latest transaction records returned by the account service. It does not represent a full historical statement or forecast.</p>
-      </>}
+        <div className="section-title page-section-heading"><div><h2>Financial performance</h2><p>Your wallet activity and transaction history, retrieved securely for your account.</p></div></div>
+        <div className="savings-summary-grid"><article className="section-stat"><span>FILTERED TRANSACTIONS</span><strong>{historyCount}</strong><small>Matching records across your account</small></article><article className="section-stat"><span>SLE WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.SLE,"SLE")}</strong><small>From posted ledger entries</small></article><article className="section-stat"><span>USD WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.USD,"USD")}</strong><small>From posted ledger entries</small></article></div>
+        <div className="section-title"><div><h2>Transaction history</h2><p>Search and filter your account records by date, description, type, status or amount.</p></div><button type="button" onClick={exportTransactions} disabled={!historyRows.length||historyLoading}><ArrowDownLeft size={15}/> Export this page</button></div>
+        <section className="history-filters" aria-label="Transaction history filters">
+          <label><span>SEARCH</span><input type="search" value={historySearch} maxLength={100} onChange={event=>{setHistorySearch(event.target.value);setHistoryPage(1);}} placeholder="Description, type, status, amount"/></label>
+          <label><span>FROM</span><input type="date" value={historyStart} max={historyEnd||undefined} onChange={event=>{setHistoryStart(event.target.value);setHistoryPage(1);}}/></label>
+          <label><span>TO</span><input type="date" value={historyEnd} min={historyStart||undefined} onChange={event=>{setHistoryEnd(event.target.value);setHistoryPage(1);}}/></label>
+          <button type="button" className="history-clear" onClick={()=>{setHistorySearch("");setHistoryStart("");setHistoryEnd("");setHistoryPage(1);}}>Clear filters</button>
+        </section>
+        {historyError&&<div className="notice" role="alert"><ShieldCheck size={16}/><span>{historyError}</span></div>}
+        <section className="transactions" aria-live="polite">
+          {historyLoading?<p className="empty-state">Loading your transaction history…</p>:historyRows.length?historyRows.map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status} · {tx.transaction_type.replaceAll("_"," ")}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">No transactions match these filters.</p>}
+        </section>
+        <div className="history-pagination"><span>Showing {historyCount===0?0:(historyPage-1)*25+1}–{Math.min(historyPage*25,historyCount)} of {historyCount}</span><div><button type="button" onClick={()=>setHistoryPage(page=>Math.max(1,page-1))} disabled={historyPage===1||historyLoading}>Previous</button><span>Page {historyPage} of {Math.max(1,Math.ceil(historyCount/25))}</span><button type="button" onClick={()=>setHistoryPage(page=>page+1)} disabled={historyPage*25>=historyCount||historyLoading}>Next</button></div></div>
+        <p className="data-note">History is limited to records associated with your own Osusu wallets. Export downloads the currently displayed page (up to 25 matching records), not all pages at once.</p>
+      </>}/>}
       <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Secure account connection</b><small>Balances are read from posted ledger entries. Money movement is not enabled in this preview.</small></div></div>
       <footer><span>© 2026 Osusu · A Delight Ventures product</span><span><ShieldCheck size={13}/> Secure connection <i/> Sierra Leone</span></footer><p className="disclaimer">OSUSU EARLY ACCESS · Deposits, withdrawals, transfers, card issuance and interest-bearing products remain disabled pending authorised integrations and approvals.</p>
       </div>
