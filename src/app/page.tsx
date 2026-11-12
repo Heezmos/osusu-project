@@ -14,6 +14,7 @@ type Goal = { id:string; name:string; currency:"SLE"|"USD"; target_amount:number
 type Tx = { id:string; transaction_type:string; direction:string; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type Overview = { profile:{display_name:string|null;country_code:string;kyc_status:string;account_status:string}|null; wallets:WalletRow[]; savings_goals:Goal[]; transactions:Tx[] };
 type SavingsProduct = { id:string; plan_code:string; display_name:string; savings_type:"goal"|"scheduled"|"fixed_term"|"circle"; description:string; currency_support:string[]; term_days:number|null; annual_rate:number|string|null; rate_status:string; is_available:boolean };
+type OsusuNotification = { id:string; notification_type:string; title:string; message:string; read_at:string|null; created_at:string };
 type SavingsActivity = { id:string; movement_type:"contribution"|"withdrawal"; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; funding_enabled:boolean; next_contribution_at:string|null; reminder_enabled:boolean; current_balance:number|string; total_contributed:number|string; contribution_count:number; withdrawal_count:number; recent_activity:SavingsActivity[] };
 
@@ -36,6 +37,8 @@ export default function OsusuPage() {
   const [active,setActive] = useState("Overview");
   const [savingsProducts,setSavingsProducts] = useState<SavingsProduct[]>([]);
   const [mySavings,setMySavings] = useState<SavingsPlan[]>([]);
+  const [notifications,setNotifications] = useState<OsusuNotification[]>([]);
+  const [showNotifications,setShowNotifications] = useState(false);
   const [showCreatePlan,setShowCreatePlan] = useState(false);
   const [savingBusy,setSavingBusy] = useState(false);
   const [selectedPlanCode,setSelectedPlanCode] = useState("flexi-save");
@@ -55,16 +58,19 @@ export default function OsusuPage() {
   const loadOverview = useCallback(async (client: ReturnType<typeof createClient>): Promise<Overview> => {
     const {error:initializeError} = await client.rpc("osusu_initialize_my_account");
     if (initializeError) throw initializeError;
-    const [overviewResult,productsResult,savingsResult] = await Promise.all([
+    const [overviewResult,productsResult,savingsResult,notificationsResult] = await Promise.all([
       client.rpc("osusu_get_my_overview"),
       client.rpc("osusu_get_savings_products"),
-      client.rpc("osusu_get_my_savings")
+      client.rpc("osusu_get_my_savings"),
+      client.rpc("osusu_get_my_notifications")
     ]);
     if (overviewResult.error) throw overviewResult.error;
     if (productsResult.error) throw productsResult.error;
     if (savingsResult.error) throw savingsResult.error;
+    if (notificationsResult.error) throw notificationsResult.error;
     setSavingsProducts((productsResult.data??[]) as SavingsProduct[]);
     setMySavings((savingsResult.data??[]) as SavingsPlan[]);
+    setNotifications((notificationsResult.data??[]) as OsusuNotification[]);
     return overviewResult.data as Overview;
   },[]);
 
@@ -188,6 +194,13 @@ export default function OsusuPage() {
     finally {setScheduleBusy(null);}
   }
 
+  async function markNotificationRead(notificationId:string) {
+    if(!supabase)return;
+    const {error:readError}=await supabase.rpc("osusu_mark_notification_read",{p_notification_id:notificationId});
+    if(readError){setError(readError.message);return;}
+    setNotifications(current=>current.map(item=>item.id===notificationId?{...item,read_at:new Date().toISOString()}:item));
+  }
+
   async function signOut() {
     if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
@@ -227,7 +240,7 @@ export default function OsusuPage() {
       <nav className="primary-navigation" aria-label="Main dashboard navigation">{["Overview","Savings Account","Total Cards","Performance"].map((item,i)=><button type="button" key={item} className={`side-link ${active===item?"selected":""}`} aria-current={active===item?"page":undefined} onClick={()=>setActive(item)}>{[Home,PiggyBank,CreditCard,TrendingUp].map((Icon,j)=>i===j?<Icon key={item} size={18}/>:null)}{item}{active===item&&<i aria-hidden="true"/>}</button>)}</nav>
       <div className="side-spacer"/><div className="side-help"><ShieldCheck size={19}/><div><b>Your money matters</b><span>Security is part of every step.</span></div></div><button className="side-link" onClick={signOut}><LogOut size={18}/>Sign out</button><div className="profile"><span className="avatar">{String(name).slice(0,2).toUpperCase()}</span><span><b>{name}</b><small>{session.user.email}</small></span></div>
     </aside>
-    <section className="workspace"><header className="topbar"><div className="breadcrumb">My Osusu <ChevronRight size={14}/><b>{active}</b></div><div className="top-tools"><div className="search"><Search size={16}/><span>Search transactions</span></div><button className="bell" type="button" aria-label="Notifications coming soon" title="Notifications will be available in a later release" disabled><Bell size={19}/></button><span className="avatar top-avatar">{String(name).slice(0,2).toUpperCase()}</span></div></header>
+    <section className="workspace"><header className="topbar"><div className="breadcrumb">My Osusu <ChevronRight size={14}/><b>{active}</b></div><div className="top-tools"><div className="search"><Search size={16}/><span>Search transactions</span></div><div className="notification-wrap"><button className="bell" type="button" aria-label="Open notifications" aria-expanded={showNotifications} onClick={()=>setShowNotifications(value=>!value)}><Bell size={19}/>{notifications.some(item=>!item.read_at)&&<i/>}</button>{showNotifications&&<section className="notification-panel"><div className="notification-heading"><b>Notifications</b><span>{notifications.filter(item=>!item.read_at).length} unread</span></div>{notifications.length?notifications.map(item=><article key={item.id} className={item.read_at?"notification-item":"notification-item unread"}><div><b>{item.title}</b><small>{dateLabel(item.created_at)}</small></div><p>{item.message}</p>{!item.read_at&&<button type="button" onClick={()=>void markNotificationRead(item.id)}>Mark as read</button>}</article>):<p className="notification-empty">You're all caught up. Important account and savings updates will appear here.</p>}</section>}</div><span className="avatar top-avatar">{String(name).slice(0,2).toUpperCase()}</span></div></header>
       <div className="page-content"><div className="welcome"><div><span className="overline">YOUR MONEY. YOUR FUTURE.</span><h1>Welcome back, {name.split(" ")[0]}</h1><p>{active==="Overview"?"Your Osusu account overview, securely connected.":active==="Savings Account"?"Your savings plans and account details.":active==="Total Cards"?"Your Osusu Dash Card services and status.":"A view of your recorded wallet activity and balances."}</p></div><span className="date-pill"><span/> {overview?.profile?.account_status??"Status unavailable"}</span></div>
       {error&&<div className="notice"><ShieldCheck size={17}/><span>{error}</span><button onClick={()=>setError("")}><X size={16}/></button></div>}
       {active==="Overview"&&<>
