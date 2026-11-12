@@ -304,7 +304,7 @@ export default function OsusuPage() {
     const columns=["Activity ID","Date","Savings plan","Movement","Status","Currency","Amount","Journal reference"];
     const safeText=(value:unknown)=>{
       const text=String(value??"");
-      return /^\\s*[=+\\-@]/.test(text) ? `'${text}` : text;
+      return /^\s*[=+\-@]/.test(text) ? `'${text}` : text;
     };
     const escapeCsv=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;
     const rows=savingsHistoryRows.map(item=>[
