@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
@@ -66,12 +67,12 @@ export default function ResetPasswordPage() {
         {!ready ? <p>Checking your secure reset link…</p> : complete ? (
           <>
             <div className="auth-message" role="status">Your password has been updated. Sign in with your new password.</div>
-            <a className="auth-submit account-auth-signin" href="/">Return to sign in</a>
+            <Link className="auth-submit account-auth-signin" href="/">Return to sign in</Link>
           </>
         ) : !hasSession ? (
           <>
             <p>This reset link is invalid or has expired. Request a new link to protect your account.</p>
-            <a className="auth-submit account-auth-signin" href="/forgot-password">Request a new reset link</a>
+            <Link className="auth-submit account-auth-signin" href="/forgot-password">Request a new reset link</Link>
           </>
         ) : (
           <>
@@ -87,7 +88,7 @@ export default function ResetPasswordPage() {
           </>
         )}
         {error && !hasSession && <div className="auth-error" role="alert">{error}</div>}
-        {!complete && <a className="account-auth-back" href="/">Back to sign in</a>}
+        {!complete && <Link className="account-auth-back" href="/">Back to sign in</Link>}
       </section>
     </main>
   );
