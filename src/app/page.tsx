@@ -492,7 +492,7 @@ export default function OsusuPage() {
         </section>
         <div className="history-pagination"><span>Showing {historyCount===0?0:(historyPage-1)*25+1}–{Math.min(historyPage*25,historyCount)} of {historyCount}</span><div><button type="button" onClick={()=>setHistoryPage(page=>Math.max(1,page-1))} disabled={historyPage===1||historyLoading}>Previous</button><span>Page {historyPage} of {Math.max(1,Math.ceil(historyCount/25))}</span><button type="button" onClick={()=>setHistoryPage(page=>page+1)} disabled={historyPage*25>=historyCount||historyLoading}>Next</button></div></div>
         <p className="data-note">History is limited to records associated with your own Osusu wallets. Export downloads the currently displayed page (up to 25 matching records), not all pages at once.</p>
-      </>}/>}
+      </>}
       <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Secure account connection</b><small>Balances are read from posted ledger entries. Money movement is not enabled in this preview.</small></div></div>
       <footer><span>© 2026 Osusu · A Delight Ventures product</span><span><ShieldCheck size={13}/> Secure connection <i/> Sierra Leone</span></footer><p className="disclaimer">OSUSU EARLY ACCESS · Deposits, withdrawals, transfers, card issuance and interest-bearing products remain disabled pending authorised integrations and approvals.</p>
       </div>
