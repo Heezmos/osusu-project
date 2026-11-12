@@ -228,3 +228,11 @@
 .history-pagination button:focus-visible,.history-clear:focus-visible{outline:2px solid #78a889;outline-offset:2px}
 @media(max-width:760px){.history-filters{grid-template-columns:1fr 1fr}.history-filters label:first-child{grid-column:1/-1}.history-clear{grid-column:1/-1}}
 @media(max-width:480px){.history-pagination{align-items:flex-start;flex-direction:column}.history-pagination>div{width:100%;justify-content:space-between}}
+
+
+/* Savings activity filter controls */
+.history-filters select{width:100%;min-width:0;height:40px;padding:0 10px;border:1px solid #dce6dc;border-radius:8px;background:#fff;color:#244b38;font:12px Arial,Helvetica,sans-serif}
+.history-filters select:focus-visible{outline:2px solid #78a889;outline-offset:2px}
+.savings-activity-filters{grid-template-columns:minmax(190px,2fr) repeat(4,minmax(125px,1fr)) auto}
+@media(max-width:1050px){.savings-activity-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.savings-activity-filters label:first-child{grid-column:span 2}.savings-activity-filters .history-clear{grid-column:auto}}
+@media(max-width:650px){.savings-activity-filters{grid-template-columns:1fr 1fr}.savings-activity-filters label:first-child{grid-column:1/-1}.savings-activity-filters .history-clear{grid-column:1/-1}}
