@@ -198,9 +198,9 @@
 .security-overview-card p,.security-action-card p{font-size:11px;line-height:1.7;color:#849188;margin:0;max-width:680px}
 .security-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0 28px}
 .security-detail{display:flex;flex-direction:column;gap:7px;padding:17px;background:#fff;border:1px solid #e4ebe3;border-radius:12px;min-width:0}
-.security-detail small{font-size:9px;letter-spacing:1px;font-weight:800;color:#8a9b8e}
+.security-detail small{font-size:9px;letter-spacing:1px;font-weight:800;color:#52645a}
 .security-detail b{font-size:13px;color:#244b38;overflow-wrap:anywhere}
-.security-detail span{font-size:10px;color:#89968e;line-height:1.5}
+.security-detail span{font-size:10px;color:#59685f;line-height:1.5}
 .security-action-card{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:19px;background:#fff;border:1px solid #e4ebe3;border-radius:12px}
 .security-action-card>div{min-width:0}
 .security-action-card b{display:block;font-size:13px;color:#244b38;margin-bottom:6px}
