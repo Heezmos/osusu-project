@@ -274,6 +274,7 @@ export default function OsusuPage() {
         {mode==="signup"&&<label>Full name<input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Your full name" required autoComplete="name"/></label>}
         <label>Email address<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required autoComplete="email"/></label>
         <label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 8 characters" required minLength={8} autoComplete={mode==="login"?"current-password":"new-password"}/></label>
+        {mode==="login"&&<div className="auth-forgot"><a href="/forgot-password">Forgot password?</a></div>}
         {error&&<div className="auth-error">{error}</div>}{message&&<div className="auth-message">{message}</div>}
         <button className="auth-submit" disabled={busy}>{busy?<LoaderCircle className="spin" size={17}/>:null}{mode==="login"?"Sign in":"Create account"}</button>
       </form>
