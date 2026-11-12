@@ -108,3 +108,20 @@
 .savings-activity span{font-size:9px;color:#839087}
 .savings-activity strong{font-size:9px;color:#3e7651}
 @media(max-width:650px){.savings-plan-card{grid-template-columns:auto 1fr}.savings-plan-target{grid-column:2}.savings-plan-operations{grid-column:1/-1}.savings-plan-operations>label{max-width:none}}
+
+
+/* Customer-managed savings schedules */
+.schedule-editor{display:grid;gap:10px;padding:12px;border:1px solid #e6eee5;border-radius:10px;background:#fbfdf9}
+.schedule-editor>b{display:flex;align-items:center;gap:7px;color:#315c42;font-size:10px}
+.schedule-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.schedule-fields label{display:grid;gap:5px;color:#6c7d70;font-size:9px;font-weight:700}
+.schedule-fields input,.schedule-fields select{height:35px;min-width:0;width:100%;padding:0 8px;border:1px solid #dfe8df;border-radius:7px;background:#fff;color:#355541;font-size:10px}
+.schedule-fields input:disabled{background:#f1f4ef;color:#a2aca3}
+.schedule-reminder{display:flex;align-items:center;gap:7px;color:#5e7464;font-size:9px}
+.schedule-reminder input{accent-color:#0b6843}
+.schedule-save{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.schedule-save small,.next-due-label{font-size:8px;color:#8a968d}
+.schedule-save button{min-height:32px;padding:0 12px;border:0;border-radius:7px;background:#e8f2e6;color:#326846;font-size:9px;font-weight:700;cursor:pointer}
+.schedule-save button:disabled{opacity:.6;cursor:wait}
+.next-due-label{display:block}
+@media(max-width:650px){.schedule-fields{grid-template-columns:1fr}.schedule-save{align-items:flex-start;flex-direction:column}.schedule-save button{width:100%}}
