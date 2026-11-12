@@ -90,3 +90,21 @@
 .savings-plan-target small:not(:first-child){margin-top:10px}
 @media(max-width:950px){.savings-product-picker,.savings-catalogue{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.create-savings-panel{padding:15px}.savings-product-picker,.savings-catalogue,.savings-form-row{grid-template-columns:1fr}.savings-catalogue-card p{min-height:0}.savings-form-actions{justify-content:stretch}.savings-form-actions button{flex:1}}
+
+
+/* Savings ledger activity and account controls */
+.savings-plan-card{grid-template-columns:auto minmax(150px,1fr) minmax(120px,auto);align-items:start}
+.savings-plan-operations{grid-column:2/-1;width:100%;display:grid;gap:10px;padding-top:12px;border-top:1px solid #edf1ed}
+.savings-plan-operations>label{display:grid;gap:6px;max-width:260px;color:#52685a;font-size:10px;font-weight:700}
+.savings-plan-operations input{height:38px;border:1px solid #dfe8df;border-radius:8px;padding:0 10px;color:#254a35;font-size:11px}
+.savings-plan-operations>div:not(.savings-activity){display:flex;gap:8px}
+.savings-plan-operations button{min-height:34px;padding:0 13px;border:0;border-radius:8px;background:#0b543d;color:white;font-size:10px;font-weight:700;cursor:pointer}
+.savings-plan-operations button.withdraw-action{border:1px solid #dfe8df;background:#fff;color:#557263}
+.savings-plan-operations button:disabled{opacity:.55;cursor:not-allowed}
+.savings-plan-operations>p{display:flex;align-items:flex-start;gap:8px;margin:0;padding:10px 12px;border-radius:8px;background:#f5f8f2;color:#718477;font-size:9px;line-height:1.6}
+.savings-activity{display:grid;gap:8px;max-width:540px}
+.savings-activity>b{font-size:10px;color:#355d44}
+.savings-activity>div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f0f3ef}
+.savings-activity span{font-size:9px;color:#839087}
+.savings-activity strong{font-size:9px;color:#3e7651}
+@media(max-width:650px){.savings-plan-card{grid-template-columns:auto 1fr}.savings-plan-target{grid-column:2}.savings-plan-operations{grid-column:1/-1}.savings-plan-operations>label{max-width:none}}

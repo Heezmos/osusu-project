@@ -14,7 +14,8 @@ type Goal = { id:string; name:string; currency:"SLE"|"USD"; target_amount:number
 type Tx = { id:string; transaction_type:string; direction:string; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type Overview = { profile:{display_name:string|null;country_code:string;kyc_status:string;account_status:string}|null; wallets:WalletRow[]; savings_goals:Goal[]; transactions:Tx[] };
 type SavingsProduct = { id:string; plan_code:string; display_name:string; savings_type:"goal"|"scheduled"|"fixed_term"|"circle"; description:string; currency_support:string[]; term_days:number|null; annual_rate:number|string|null; rate_status:string; is_available:boolean };
-type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; total_contributed:number|string; contribution_count:number };
+type SavingsActivity = { id:string; movement_type:"contribution"|"withdrawal"; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
+type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; funding_enabled:boolean; current_balance:number|string; total_contributed:number|string; contribution_count:number; withdrawal_count:number; recent_activity:SavingsActivity[] };
 
 const formatMoney = (amount:number|string,currency:"SLE"|"USD") => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(Number(amount)).replace("$",currency==="SLE"?"Le ":"$");
 const dateLabel = (value:string) => new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(value));
@@ -43,6 +44,8 @@ export default function OsusuPage() {
   const [planCurrency,setPlanCurrency] = useState<"SLE"|"USD">("SLE");
   const [contributionFrequency,setContributionFrequency] = useState("flexible");
   const [scheduledAmount,setScheduledAmount] = useState("");
+  const [movementAmounts,setMovementAmounts] = useState<Record<string,string>>({});
+  const [movementBusy,setMovementBusy] = useState<string|null>(null);
 
   const loadOverview = useCallback(async (client: ReturnType<typeof createClient>): Promise<Overview> => {
     const {error:initializeError} = await client.rpc("osusu_initialize_my_account");
@@ -138,6 +141,25 @@ export default function OsusuPage() {
     } finally {setSavingBusy(false);}
   }
 
+  async function moveSavingsFunds(plan:SavingsPlan,direction:"contribution"|"withdrawal") {
+    if(!supabase)return;
+    const amount=Number(movementAmounts[plan.id]??"");
+    if(!Number.isFinite(amount)||amount<=0){setError("Enter an amount greater than zero.");return;}
+    setMovementBusy(plan.id);setError("");setMessage("");
+    try {
+      const {error:movementError}=await supabase.rpc("osusu_move_savings_funds",{
+        p_savings_account_id:plan.id,p_amount:amount,p_direction:direction,
+        p_idempotency_key:crypto.randomUUID(),
+        p_description:direction==="contribution"?"Customer savings contribution":"Customer savings withdrawal"
+      });
+      if(movementError)throw movementError;
+      await loadOverview(supabase);
+      setMovementAmounts(current=>({...current,[plan.id]:""}));
+      setMessage(direction==="contribution"?"Savings contribution recorded.":"Savings withdrawal recorded.");
+    } catch(e) {setError(e instanceof Error?e.message:"Unable to process this savings movement.");}
+    finally {setMovementBusy(null);}
+  }
+
   async function signOut() {
     if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
@@ -227,9 +249,13 @@ export default function OsusuPage() {
         <div className="savings-plan-list">{mySavings.length?mySavings.map(plan=><article className="savings-plan-card" key={plan.id}>
           <span className="goal-icon"><PiggyBank size={19}/></span>
           <div className="savings-plan-main"><b>{plan.name}</b><small>{plan.plan_name||plan.savings_type.replaceAll("_"," ")} · {plan.contribution_frequency||"Flexible"} · {plan.currency}</small><small>Status: {plan.status} · Opened {formatPlanDate(plan.starts_at)}</small><small>{plan.contribution_count} confirmed contribution{plan.contribution_count===1?"":"s"}</small><small>Scheduled amount: {plan.scheduled_amount?formatMoney(plan.scheduled_amount,plan.currency):"Not set"}</small></div>
-          <div className="savings-plan-target"><small>Target</small><b>{plan.target_amount?formatMoney(plan.target_amount,plan.currency):"Not set"}</b><small>Contributed</small><b>{formatMoney(plan.total_contributed,plan.currency)}</b></div>
+          <div className="savings-plan-target"><small>Target</small><b>{plan.target_amount?formatMoney(plan.target_amount,plan.currency):"Not set"}</b><small>Current balance</small><b>{formatMoney(plan.current_balance,plan.currency)}</b><small>Total contributed</small><b>{formatMoney(plan.total_contributed,plan.currency)}</b><small>Withdrawals</small><b>{plan.withdrawal_count}</b></div>
+          <div className="savings-plan-operations">
+            {plan.funding_enabled?<><label>Amount<input type="number" min="0.01" step="0.01" value={movementAmounts[plan.id]??""} onChange={e=>setMovementAmounts(current=>({...current,[plan.id]:e.target.value}))} placeholder="Enter amount"/></label><div><button type="button" disabled={movementBusy===plan.id} onClick={()=>void moveSavingsFunds(plan,"contribution")}>Add savings</button><button type="button" className="withdraw-action" disabled={movementBusy===plan.id} onClick={()=>void moveSavingsFunds(plan,"withdrawal")}>Withdraw</button></div></>:<p><ShieldCheck size={14}/> Contributions and withdrawals are locked until this savings product is approved for funding and your account and wallet meet verification requirements.</p>}
+            {plan.recent_activity?.length>0&&<div className="savings-activity"><b>Recent activity</b>{plan.recent_activity.map(item=><div key={item.id}><span>{item.movement_type==="contribution"?"Contribution":"Withdrawal"} · {dateLabel(item.created_at)}</span><strong>{item.movement_type==="contribution"?"+":"−"}{formatMoney(item.amount,item.currency)}</strong></div>)}</div>}
+          </div>
         </article>):<div className="empty-state goal-empty">You have not created a savings plan yet. Choose an available option above to get started.</div>}</div>
-        <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Your savings are tracked securely</b><small>Plan setup is active. Contributions, withdrawals, automatic collections and interest payouts require verified funding rails and approved financial terms; they are not simulated.</small></div></div>
+        <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Your savings are tracked securely</b><small>Plan creation and ledger-backed savings records are implemented. Money movements remain gated until product approval, verified KYC/account status and active wallet funding controls are in place. Scheduled auto-collection and interest payouts are not simulated.</small></div></div>
       </>}
       {active==="Total Cards"&&<>
         <div className="section-title page-section-heading"><div><h2>Osusu Dash Cards</h2><p>Manage the cards connected to your Osusu account.</p></div></div>
