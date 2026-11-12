@@ -280,7 +280,7 @@ export default function OsusuPage() {
     const columns=["Transaction ID","Date","Description","Type","Direction","Status","Currency","Amount"];
     const safeText=(value:unknown)=>{
       const text=String(value??"");
-      return /^\s*[=+\-@]/.test(text) ? \`'\${text}\` : text;
+      return /^\s*[=+\-@]/.test(text) ? "'" + text : text;
     };
     const escapeCsv=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;
     const rows=historyRows.map(tx=>[
