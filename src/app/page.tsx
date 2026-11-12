@@ -271,8 +271,8 @@ export default function OsusuPage() {
       tx.id,tx.created_at,tx.description||tx.transaction_type.replaceAll("_"," "),
       tx.transaction_type,tx.direction,tx.status,tx.currency,tx.amount
     ]);
-    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\\r\\n");
-    const blob=new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
+    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\r\n");
+    const blob=new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
     link.href=url;
