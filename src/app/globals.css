@@ -251,8 +251,10 @@
 
 /* Keep savings goal details readable on tablet widths */
 @media(min-width:651px) and (max-width:850px){
-  .savings-plan-card{grid-template-columns:auto minmax(0,1fr)}
-  .savings-plan-target{grid-column:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px}
+  .savings-plan-card{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:start}
+  .savings-plan-card>.goal-icon{grid-column:1;grid-row:1}
+  .savings-plan-main{grid-column:2;grid-row:1}
+  .savings-plan-target{grid-column:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px;text-align:left}
   .savings-goal-progress{grid-column:2;min-width:0;max-width:none;margin-left:0}
   .savings-plan-operations{grid-column:2}
 }
