@@ -1,0 +1,1 @@
+alter table osusu.payment_requests enable row level security;

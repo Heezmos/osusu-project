@@ -92,6 +92,16 @@ export default function OsusuPage() {
   const [scheduleDates,setScheduleDates] = useState<Record<string,string>>({});
   const [scheduleReminders,setScheduleReminders] = useState<Record<string,boolean>>({});
   const [scheduleBusy,setScheduleBusy] = useState<string|null>(null);
+  const [osusuTag,setOsusuTag] = useState("");
+  const [tagInput,setTagInput] = useState("");
+  const [tagBusy,setTagBusy] = useState(false);
+  const [recipientTag,setRecipientTag] = useState("");
+  const [recipient,setRecipient] = useState<{found:boolean;osusu_tag?:string;display_name?:string}|null>(null);
+  const [requestAmount,setRequestAmount] = useState("");
+  const [requestCurrency,setRequestCurrency] = useState<"SLE"|"USD">("SLE");
+  const [requestNote,setRequestNote] = useState("");
+  const [paymentRequests,setPaymentRequests] = useState<Array<{id:string;direction:"incoming"|"outgoing";other_party_name:string;other_party_tag:string|null;amount:number|string;currency:"SLE"|"USD";note:string|null;status:string;created_at:string}>>([]);
+  const [paymentsBusy,setPaymentsBusy] = useState(false);
 
   const loadOverview = useCallback(async (client: ReturnType<typeof createClient>): Promise<Overview> => {
     const {error:initializeError} = await client.rpc("osusu_initialize_my_account");
@@ -274,6 +284,110 @@ export default function OsusuPage() {
     finally {setCircleBusy(false);}
   }
 
+  async function refreshPayments() {
+    if(!supabase)return;
+    setPaymentsBusy(true);
+    try{
+      const [tagResult,requestsResult]=await Promise.all([
+        supabase.rpc("osusu_get_my_tag"),
+        supabase.rpc("osusu_get_my_payment_requests")
+      ]);
+      if(tagResult.error)throw tagResult.error;
+      if(requestsResult.error)throw requestsResult.error;
+      const tagData=tagResult.data as {osusu_tag?:string|null};
+      setOsusuTag(tagData.osusu_tag??"");
+      setTagInput(tagData.osusu_tag??"");
+      setPaymentRequests((requestsResult.data??[]) as typeof paymentRequests);
+    }finally{setPaymentsBusy(false);}
+  }
+
+  useEffect(()=>{
+    if(!supabase||!session||active!=="Payments")return;
+    let cancelled=false;
+    (async()=>{
+      try{
+        const [tagResult,requestsResult]=await Promise.all([
+          supabase.rpc("osusu_get_my_tag"),
+          supabase.rpc("osusu_get_my_payment_requests")
+        ]);
+        if(tagResult.error)throw tagResult.error;
+        if(requestsResult.error)throw requestsResult.error;
+        if(cancelled)return;
+        const tagData=tagResult.data as {osusu_tag?:string|null};
+        setOsusuTag(tagData.osusu_tag??"");
+        setTagInput(tagData.osusu_tag??"");
+        setPaymentRequests((requestsResult.data??[]) as typeof paymentRequests);
+      }catch(e){if(!cancelled)setError(e instanceof Error?e.message:"Unable to load Osusu Payments.");}
+      finally{if(!cancelled)setPaymentsBusy(false);}
+    })();
+    return ()=>{cancelled=true;};
+  },[supabase,session?.user.id,active]);
+
+  async function handleRefreshPayments(){
+    setError("");
+    try{await refreshPayments();}
+    catch(e){setError(e instanceof Error?e.message:"Unable to refresh payment requests.");}
+  }
+
+  async function saveOsusuTag(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();if(!supabase)return;
+    setTagBusy(true);setError("");setMessage("");
+    try{
+      const {data,error:tagError}=await supabase.rpc("osusu_set_my_tag",{p_tag:tagInput.trim()});
+      if(tagError)throw tagError;
+      const result=data as {osusu_tag:string};
+      setOsusuTag(result.osusu_tag);setTagInput(result.osusu_tag);
+      setMessage("Your OsusuTag is ready to share.");
+    }catch(e){setError(e instanceof Error?e.message:"Unable to save your OsusuTag.");}
+    finally{setTagBusy(false);}
+  }
+
+  async function lookupOsusuRecipient(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();if(!supabase)return;
+    setRecipient(null);setError("");setMessage("");
+    const {data,error:lookupError}=await supabase.rpc("osusu_lookup_recipient",{p_tag:recipientTag.trim().replace(/^@/,"")});
+    if(lookupError){setError(lookupError.message);return;}
+    setRecipient(data as {found:boolean;osusu_tag?:string;display_name?:string});
+  }
+
+  async function sendPaymentRequest(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();if(!supabase||!recipient?.found)return;
+    setPaymentsBusy(true);setError("");setMessage("");
+    try{
+      const {error:requestError}=await supabase.rpc("osusu_create_payment_request",{
+        p_recipient_tag:recipient.osusu_tag,p_amount:Number(requestAmount),p_currency:requestCurrency,p_note:requestNote.trim()||null
+      });
+      if(requestError)throw requestError;
+      setRequestAmount("");setRequestNote("");setRecipientTag("");setRecipient(null);
+      await refreshPayments();
+      setMessage("Payment request sent. No money has moved.");
+    }catch(e){setError(e instanceof Error?e.message:"Unable to send payment request.");}
+    finally{setPaymentsBusy(false);}
+  }
+
+  async function respondPaymentRequest(id:string,response:"accepted"|"declined"){
+    if(!supabase)return;
+    setPaymentsBusy(true);setError("");setMessage("");
+    try{
+      const {error:responseError}=await supabase.rpc("osusu_respond_to_payment_request",{p_request_id:id,p_response:response});
+      if(responseError)throw responseError;
+      await refreshPayments();
+      setMessage(response==="accepted"?"Request accepted. This is not a payment; no money has moved.":"Payment request declined.");
+    }catch(e){setError(e instanceof Error?e.message:"Unable to update payment request.");}
+    finally{setPaymentsBusy(false);}
+  }
+
+  async function cancelPaymentRequest(id:string){
+    if(!supabase)return;
+    setPaymentsBusy(true);setError("");setMessage("");
+    try{
+      const {error:cancelError}=await supabase.rpc("osusu_cancel_payment_request",{p_request_id:id});
+      if(cancelError)throw cancelError;
+      await refreshPayments();setMessage("Payment request cancelled.");
+    }catch(e){setError(e instanceof Error?e.message:"Unable to cancel payment request.");}
+    finally{setPaymentsBusy(false);}
+  }
+
   async function markNotificationRead(notificationId:string) {
     if(!supabase)return;
     const {error:readError}=await supabase.rpc("osusu_mark_notification_read",{p_notification_id:notificationId});
@@ -433,12 +547,54 @@ export default function OsusuPage() {
   const name=overview?.profile?.display_name||session.user.email?.split("@")[0]||"there";
   return <main className="osusu-app">
     <aside className="side-panel"><div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span></div><p className="nav-caption">YOUR SPACE</p>
-      <nav className="primary-navigation" aria-label="Main dashboard navigation">{[{label:"Overview",Icon:Home},{label:"Savings Account",Icon:PiggyBank},{label:"Total Cards",Icon:CreditCard},{label:"Performance",Icon:TrendingUp},{label:"Account & Security",Icon:ShieldCheck}].map(({label,Icon})=><button type="button" key={label} className={`side-link ${active===label?"selected":""}`} aria-current={active===label?"page":undefined} onClick={()=>setActive(label)}><Icon size={18}/>{label}{active===label&&<i aria-hidden="true"/>}</button>)}</nav>
+      <nav className="primary-navigation" aria-label="Main dashboard navigation">{[{label:"Overview",Icon:Home},{label:"Payments",Icon:ArrowLeftRight},{label:"Savings Account",Icon:PiggyBank},{label:"Total Cards",Icon:CreditCard},{label:"Performance",Icon:TrendingUp},{label:"Account & Security",Icon:ShieldCheck}].map(({label,Icon})=><button type="button" key={label} className={`side-link ${active===label?"selected":""}`} aria-current={active===label?"page":undefined} onClick={()=>setActive(label)}><Icon size={18}/>{label}{active===label&&<i aria-hidden="true"/>}</button>)}</nav>
       <div className="side-spacer"/><div className="side-help"><ShieldCheck size={19}/><div><b>Your money matters</b><span>Security is part of every step.</span></div></div><button className="side-link" onClick={signOut}><LogOut size={18}/>Sign out</button><div className="profile"><span className="avatar">{String(name).slice(0,2).toUpperCase()}</span><span><b>{name}</b><small>{session.user.email}</small></span></div>
     </aside>
     <section className="workspace"><header className="topbar"><div className="breadcrumb">My Osusu <ChevronRight size={14}/><b>{active}</b></div><div className="top-tools"><label className="search" aria-label="Search recent transactions"><Search size={16}/><input type="search" value={transactionSearch} onChange={event=>setTransactionSearch(event.target.value)} placeholder="Search transactions" aria-label="Search transactions"/></label><div className="notification-wrap"><button className="bell" type="button" aria-label="Open notifications" aria-expanded={showNotifications} onClick={()=>setShowNotifications(value=>!value)}><Bell size={19}/>{notifications.some(item=>!item.read_at)&&<i/>}</button>{showNotifications&&<section className="notification-panel"><div className="notification-heading"><b>Notifications</b><span>{notifications.filter(item=>!item.read_at).length} unread</span></div>{notifications.length?notifications.map(item=><article key={item.id} className={item.read_at?"notification-item":"notification-item unread"}><div><b>{item.title}</b><small>{dateLabel(item.created_at)}</small></div><p>{item.message}</p>{!item.read_at&&<button type="button" onClick={()=>void markNotificationRead(item.id)}>Mark as read</button>}</article>):<p className="notification-empty">You&apos;re all caught up. Important account and savings updates will appear here.</p>}</section>}</div><span className="avatar top-avatar">{String(name).slice(0,2).toUpperCase()}</span></div></header>
-      <div className="page-content"><div className="welcome"><div><span className="overline">YOUR MONEY. YOUR FUTURE.</span><h1>Welcome back, {name.split(" ")[0]}</h1><p>{active==="Overview"?"Your Osusu account overview, securely connected.":active==="Savings Account"?"Your savings plans and account details.":active==="Total Cards"?"Your Osusu Dash Card services and status.":"A view of your recorded wallet activity and balances."}</p></div><span className="date-pill"><span/> {overview?.profile?.account_status??"Status unavailable"}</span></div>
+      <div className="page-content"><div className="welcome"><div><span className="overline">YOUR MONEY. YOUR FUTURE.</span><h1>Welcome back, {name.split(" ")[0]}</h1><p>{active==="Overview"?"Your Osusu account overview, securely connected.":active==="Payments"?"Find people and manage payment requests.":active==="Savings Account"?"Your savings plans and account details.":active==="Total Cards"?"Your Osusu Dash Card services and status.":"A view of your recorded wallet activity and balances."}</p></div><span className="date-pill"><span/> {overview?.profile?.account_status??"Status unavailable"}</span></div>
       {error&&<div className="notice"><ShieldCheck size={17}/><span>{error}</span><button onClick={()=>setError("")}><X size={16}/></button></div>}
+      {active==="Payments"&&<>
+        <div className="section-title page-section-heading"><div><h2>Osusu Payments</h2><p>Find people by their OsusuTag and send or manage payment requests.</p></div></div>
+        <section className="payments-identity-card">
+          <div><span className="overline">YOUR PAYMENT ID</span><h2>{osusuTag?"@"+osusuTag:"Claim your OsusuTag"}</h2><p>{osusuTag?"Share this identity so other Osusu members can find you.":"Choose a unique, memorable identity between 3 and 20 characters."}</p></div>
+          <form onSubmit={saveOsusuTag}>
+            <label>OsusuTag<input value={tagInput} onChange={e=>setTagInput(e.target.value.toLowerCase().replace(/^@/,""))} minLength={3} maxLength={20} pattern="[a-z0-9][a-z0-9_]{2,19}" placeholder="e.g. henrymos" required/></label>
+            <button type="submit" disabled={tagBusy||!tagInput.trim()}>{tagBusy?"Saving…":osusuTag?"Update tag":"Claim tag"}</button>
+          </form>
+          {osusuTag&&<button type="button" className="tag-copy" onClick={()=>void navigator.clipboard.writeText("@"+osusuTag)}><Copy size={14}/> Copy @ {osusuTag}</button>}
+        </section>
+        <div className="payments-action-grid">
+          <section className="payments-panel">
+            <span className="overline">SEND A REQUEST</span><h3>Find an Osusu member</h3>
+            <form onSubmit={lookupOsusuRecipient}>
+              <label>Recipient OsusuTag<input value={recipientTag} onChange={e=>{setRecipientTag(e.target.value);setRecipient(null);}} placeholder="@theirtag" required/></label>
+              <button type="submit" disabled={!recipientTag.trim()}>Find recipient</button>
+            </form>
+            {recipient&&<div className={recipient.found?"recipient-confirmed":"recipient-missing"}>{recipient.found?<><b><ShieldCheck size={16}/> Recipient found</b><strong>{recipient.display_name}</strong><small>@{recipient.osusu_tag}</small>
+              <form onSubmit={sendPaymentRequest}>
+                <label>Amount<input type="number" min="0.01" max="100000000" step="0.01" value={requestAmount} onChange={e=>setRequestAmount(e.target.value)} required/></label>
+                <label>Currency<select value={requestCurrency} onChange={e=>setRequestCurrency(e.target.value as "SLE"|"USD")}><option value="SLE">SLE · Leone</option><option value="USD">USD · US Dollar</option></select></label>
+                <label>Note (optional)<input value={requestNote} maxLength={240} onChange={e=>setRequestNote(e.target.value)} placeholder="What is this request for?"/></label>
+                <button type="submit" disabled={paymentsBusy||Number(requestAmount)<=0}>Send payment request</button>
+              </form>
+            </>:<p>No other Osusu member was found with that tag. Check the spelling and try again.</p>}</div>}
+          </section>
+          <section className="payments-panel payments-safety"><ShieldCheck size={23}/><h3>Payment safety</h3><p>Always check the recipient&apos;s displayed name and OsusuTag before sending a request. Never share your password, PIN or verification code.</p><p><b>Important:</b> accepting a request is not a transfer. Osusu does not move money through this feature.</p></section>
+        </div>
+        <div className="section-title"><div><h2>Payment requests</h2><p>Incoming and outgoing requests linked to your Osusu account.</p></div><button type="button" onClick={()=>void handleRefreshPayments()} disabled={paymentsBusy}>Refresh</button></div>
+        <section className="payment-request-list" aria-live="polite">
+          {paymentsBusy?<p className="empty-state">Loading payment requests…</p>:paymentRequests.length?paymentRequests.map(request=><article className="payment-request-card" key={request.id}>
+            <div className="payment-request-main"><span className="overline">{request.direction==="incoming"?"REQUEST RECEIVED":"REQUEST SENT"}</span><b>{request.direction==="incoming"?"From ":"To "}{request.other_party_name}</b><small>{request.other_party_tag?"@"+request.other_party_tag:"Osusu member"} · {dateLabel(request.created_at)}</small>{request.note&&<p>{request.note}</p>}</div>
+            <div className="payment-request-amount"><b>{formatMoney(request.amount,request.currency)}</b><small>{request.status}</small></div>
+            <div className="payment-request-actions">
+              {request.direction==="incoming"&&request.status==="pending"&&<><button type="button" onClick={()=>void respondPaymentRequest(request.id,"accepted")} disabled={paymentsBusy}>Accept</button><button type="button" className="secondary" onClick={()=>void respondPaymentRequest(request.id,"declined")} disabled={paymentsBusy}>Decline</button></>}
+              {request.direction==="outgoing"&&request.status==="pending"&&<button type="button" className="secondary" onClick={()=>void cancelPaymentRequest(request.id)} disabled={paymentsBusy}>Cancel request</button>}
+              {request.status!=="pending"&&<span>{request.status==="accepted"?"Acknowledged · not paid":request.status}</span>}
+            </div>
+          </article>):<p className="empty-state">No payment requests yet. Find an Osusu member to send your first request.</p>}
+        </section>
+        <p className="data-note">Payment requests are coordination records only. Accepting a request does not debit a wallet or confirm that funds have been received.</p>
+      </>}
       {active==="Account & Security"&&<>
         <div className="section-title page-section-heading"><div><h2>Account &amp; Security</h2><p>Review your sign-in identity and keep your Osusu account secure.</p></div></div>
         <section className="security-overview-card">
