@@ -25,10 +25,10 @@ export default function ResetPasswordPage() {
       setHasSession(Boolean(session));
       setReady(true);
     });
-    void client.auth.getSession().then(({ data, error: sessionError }) => {
+    void client.auth.getSession().then((result: { data: { session: Session | null }; error: { message: string } | null }) => {
       if (!active) return;
-      setHasSession(Boolean(data.session));
-      if (sessionError) setError(sessionError.message);
+      setHasSession(Boolean(result.data.session));
+      if (result.error) setError(result.error.message);
       setReady(true);
     });
     return () => {
