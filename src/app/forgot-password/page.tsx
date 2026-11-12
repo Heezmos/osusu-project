@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
@@ -41,7 +42,7 @@ export default function ForgotPasswordPage() {
           {message && <div className="auth-message" role="status">{message}</div>}
           <button className="auth-submit" type="submit" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</button>
         </form>
-        <a className="account-auth-back" href="/">Back to sign in</a>
+        <Link className="account-auth-back" href="/">Back to sign in</Link>
       </section>
     </main>
   );
