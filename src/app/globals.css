@@ -258,3 +258,17 @@
   .savings-goal-progress{grid-column:2;min-width:0;max-width:none;margin-left:0}
   .savings-plan-operations{grid-column:2}
 }
+
+/* Mobile-first savings plan card layout */
+@media(max-width:650px){
+  .savings-plan-card{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:start;gap:12px}
+  .savings-plan-card>.goal-icon{grid-column:1;grid-row:1}
+  .savings-plan-main{grid-column:2;grid-row:1}
+  .savings-plan-target{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px;margin:0;text-align:left}
+  .savings-plan-target small{margin:0}
+  .savings-plan-target small:not(:first-child){margin-top:0}
+  .savings-plan-target b{overflow-wrap:anywhere}
+  .savings-goal-progress{grid-column:1/-1;min-width:0;max-width:none;margin:0}
+  .savings-plan-operations{grid-column:1/-1;width:100%}
+  .savings-plan-operations>label{max-width:none}
+}
