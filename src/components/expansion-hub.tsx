@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight, BadgeCheck, Building2, Bus, CheckCircle2, ChevronRight, CircleDollarSign,
   Globe2, Heart, LayoutDashboard, LockKeyhole, Search, ShieldCheck, ShoppingBag,
-  Smartphone, Wifi, Zap
+  Smartphone, TrendingUp, Users, Wifi, Zap
 } from "lucide-react";
 
 type HubSection = "Services" | "Osusu Global" | "Osusu Business";
