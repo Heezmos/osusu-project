@@ -108,3 +108,39 @@
 .savings-activity span{font-size:9px;color:#839087}
 .savings-activity strong{font-size:9px;color:#3e7651}
 @media(max-width:650px){.savings-plan-card{grid-template-columns:auto 1fr}.savings-plan-target{grid-column:2}.savings-plan-operations{grid-column:1/-1}.savings-plan-operations>label{max-width:none}}
+
+
+/* Customer-managed savings schedules */
+.schedule-editor{display:grid;gap:10px;padding:12px;border:1px solid #e6eee5;border-radius:10px;background:#fbfdf9}
+.schedule-editor>b{display:flex;align-items:center;gap:7px;color:#315c42;font-size:10px}
+.schedule-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.schedule-fields label{display:grid;gap:5px;color:#6c7d70;font-size:9px;font-weight:700}
+.schedule-fields input,.schedule-fields select{height:35px;min-width:0;width:100%;padding:0 8px;border:1px solid #dfe8df;border-radius:7px;background:#fff;color:#355541;font-size:10px}
+.schedule-fields input:disabled{background:#f1f4ef;color:#a2aca3}
+.schedule-reminder{display:flex;align-items:center;gap:7px;color:#5e7464;font-size:9px}
+.schedule-reminder input{accent-color:#0b6843}
+.schedule-save{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.schedule-save small,.next-due-label{font-size:8px;color:#8a968d}
+.schedule-save button{min-height:32px;padding:0 12px;border:0;border-radius:7px;background:#e8f2e6;color:#326846;font-size:9px;font-weight:700;cursor:pointer}
+.schedule-save button:disabled{opacity:.6;cursor:wait}
+.next-due-label{display:block}
+@media(max-width:650px){.schedule-fields{grid-template-columns:1fr}.schedule-save{align-items:flex-start;flex-direction:column}.schedule-save button{width:100%}}
+
+
+/* Authenticated notification inbox */
+.notification-wrap{position:relative}
+.notification-wrap .bell{position:relative}
+.notification-wrap .bell>i{position:absolute;top:5px;right:5px;width:7px;height:7px;border:1px solid #fff;border-radius:50%;background:#b77b35}
+.notification-panel{position:absolute;z-index:30;top:46px;right:0;width:min(340px,calc(100vw - 36px));max-height:430px;overflow:auto;padding:12px;background:#fff;border:1px solid #e5ece5;border-radius:12px;box-shadow:0 16px 40px #173b251c}
+.notification-heading{display:flex;align-items:center;justify-content:space-between;padding:3px 3px 11px;border-bottom:1px solid #edf1ed}
+.notification-heading b{font-size:12px;color:#244d37}
+.notification-heading span{font-size:9px;color:#829087}
+.notification-item{padding:12px 4px;border-bottom:1px solid #f0f3ef}
+.notification-item.unread{background:#f8fbf6}
+.notification-item>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.notification-item b{font-size:10px;color:#315541}
+.notification-item small{font-size:8px;color:#8a968d}
+.notification-item p,.notification-empty{margin:7px 0;color:#718076;font-size:9px;line-height:1.6}
+.notification-item button{padding:0;border:0;background:transparent;color:#34734b;font-size:9px;font-weight:700;cursor:pointer}
+.notification-empty{padding:14px 4px}
+@media(max-width:650px){.notification-panel{right:-44px}}
