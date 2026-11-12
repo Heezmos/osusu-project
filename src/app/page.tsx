@@ -287,17 +287,18 @@ export default function OsusuPage() {
   async function refreshPayments() {
     if(!supabase)return;
     setPaymentsBusy(true);
-    const [tagResult,requestsResult]=await Promise.all([
-      supabase.rpc("osusu_get_my_tag"),
-      supabase.rpc("osusu_get_my_payment_requests")
-    ]);
-    if(tagResult.error)throw tagResult.error;
-    if(requestsResult.error)throw requestsResult.error;
-    const tagData=tagResult.data as {osusu_tag?:string|null};
-    setOsusuTag(tagData.osusu_tag??"");
-    setTagInput(tagData.osusu_tag??"");
-    setPaymentRequests((requestsResult.data??[]) as typeof paymentRequests);
-    setPaymentsBusy(false);
+    try{
+      const [tagResult,requestsResult]=await Promise.all([
+        supabase.rpc("osusu_get_my_tag"),
+        supabase.rpc("osusu_get_my_payment_requests")
+      ]);
+      if(tagResult.error)throw tagResult.error;
+      if(requestsResult.error)throw requestsResult.error;
+      const tagData=tagResult.data as {osusu_tag?:string|null};
+      setOsusuTag(tagData.osusu_tag??"");
+      setTagInput(tagData.osusu_tag??"");
+      setPaymentRequests((requestsResult.data??[]) as typeof paymentRequests);
+    }finally{setPaymentsBusy(false);}
   }
 
   useEffect(()=>{
