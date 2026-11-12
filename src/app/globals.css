@@ -248,3 +248,11 @@
 .savings-goal-progress-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#176847,#9bc84c);transition:width .25s ease}
 .savings-goal-progress>small{font-size:9px;line-height:1.5;color:#748379}
 @media(max-width:650px){.savings-goal-progress{flex:1 1 100%;max-width:none;margin-left:36px}}
+
+/* Keep savings goal details readable on tablet widths */
+@media(min-width:651px) and (max-width:850px){
+  .savings-plan-card{grid-template-columns:auto minmax(0,1fr)}
+  .savings-plan-target{grid-column:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px}
+  .savings-goal-progress{grid-column:2;min-width:0;max-width:none;margin-left:0}
+  .savings-plan-operations{grid-column:2}
+}
