@@ -579,7 +579,7 @@ export default function OsusuPage() {
               </form>
             </>:<p>No other Osusu member was found with that tag. Check the spelling and try again.</p>}</div>}
           </section>
-          <section className="payments-panel payments-safety"><ShieldCheck size={23}/><h3>Payment safety</h3><p>Always check the recipient's displayed name and OsusuTag before sending a request. Never share your password, PIN or verification code.</p><p><b>Important:</b> accepting a request is not a transfer. Osusu does not move money through this feature.</p></section>
+          <section className="payments-panel payments-safety"><ShieldCheck size={23}/><h3>Payment safety</h3><p>Always check the recipient&apos;s displayed name and OsusuTag before sending a request. Never share your password, PIN or verification code.</p><p><b>Important:</b> accepting a request is not a transfer. Osusu does not move money through this feature.</p></section>
         </div>
         <div className="section-title"><div><h2>Payment requests</h2><p>Incoming and outgoing requests linked to your Osusu account.</p></div><button type="button" onClick={()=>void handleRefreshPayments()} disabled={paymentsBusy}>Refresh</button></div>
         <section className="payment-request-list" aria-live="polite">
