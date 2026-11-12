@@ -15,7 +15,7 @@ type Tx = { id:string; transaction_type:string; direction:string; amount:number|
 type Overview = { profile:{display_name:string|null;country_code:string;kyc_status:string;account_status:string}|null; wallets:WalletRow[]; savings_goals:Goal[]; transactions:Tx[] };
 type SavingsProduct = { id:string; plan_code:string; display_name:string; savings_type:"goal"|"scheduled"|"fixed_term"|"circle"; description:string; currency_support:string[]; term_days:number|null; annual_rate:number|string|null; rate_status:string; is_available:boolean };
 type SavingsActivity = { id:string; movement_type:"contribution"|"withdrawal"; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
-type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; funding_enabled:boolean; current_balance:number|string; total_contributed:number|string; contribution_count:number; withdrawal_count:number; recent_activity:SavingsActivity[] };
+type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; funding_enabled:boolean; next_contribution_at:string|null; reminder_enabled:boolean; current_balance:number|string; total_contributed:number|string; contribution_count:number; withdrawal_count:number; recent_activity:SavingsActivity[] };
 
 const formatMoney = (amount:number|string,currency:"SLE"|"USD") => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(Number(amount)).replace("$",currency==="SLE"?"Le ":"$");
 const dateLabel = (value:string) => new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(value));
@@ -46,6 +46,11 @@ export default function OsusuPage() {
   const [scheduledAmount,setScheduledAmount] = useState("");
   const [movementAmounts,setMovementAmounts] = useState<Record<string,string>>({});
   const [movementBusy,setMovementBusy] = useState<string|null>(null);
+  const [scheduleFrequency,setScheduleFrequency] = useState<Record<string,string>>({});
+  const [scheduleAmounts,setScheduleAmounts] = useState<Record<string,string>>({});
+  const [scheduleDates,setScheduleDates] = useState<Record<string,string>>({});
+  const [scheduleReminders,setScheduleReminders] = useState<Record<string,boolean>>({});
+  const [scheduleBusy,setScheduleBusy] = useState<string|null>(null);
 
   const loadOverview = useCallback(async (client: ReturnType<typeof createClient>): Promise<Overview> => {
     const {error:initializeError} = await client.rpc("osusu_initialize_my_account");
@@ -160,6 +165,29 @@ export default function OsusuPage() {
     finally {setMovementBusy(null);}
   }
 
+  async function saveSavingsSchedule(plan:SavingsPlan) {
+    if(!supabase)return;
+    const frequency=scheduleFrequency[plan.id]??plan.contribution_frequency??"flexible";
+    const amountText=scheduleAmounts[plan.id]??String(plan.scheduled_amount??"");
+    const dateText=scheduleDates[plan.id]??(plan.next_contribution_at?new Date(plan.next_contribution_at).toISOString().slice(0,10):"");
+    const reminder=scheduleReminders[plan.id]??plan.reminder_enabled;
+    const nextDate=frequency==="flexible"?null:dateText?new Date(dateText+"T12:00:00").toISOString():null;
+    setScheduleBusy(plan.id);setError("");setMessage("");
+    try {
+      const {error:scheduleError}=await supabase.rpc("osusu_update_savings_schedule",{
+        p_savings_account_id:plan.id,
+        p_frequency:frequency,
+        p_scheduled_amount:frequency==="flexible"?null:Number(amountText),
+        p_next_contribution_at:nextDate,
+        p_reminder_enabled:reminder
+      });
+      if(scheduleError)throw scheduleError;
+      await loadOverview(supabase);
+      setMessage("Your savings schedule has been updated. Reminders are preferences only; no automatic debit is enabled.");
+    } catch(e) {setError(e instanceof Error?e.message:"Unable to update this savings schedule.");}
+    finally {setScheduleBusy(null);}
+  }
+
   async function signOut() {
     if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
@@ -252,10 +280,21 @@ export default function OsusuPage() {
           <div className="savings-plan-target"><small>Target</small><b>{plan.target_amount?formatMoney(plan.target_amount,plan.currency):"Not set"}</b><small>Current balance</small><b>{formatMoney(plan.current_balance,plan.currency)}</b><small>Total contributed</small><b>{formatMoney(plan.total_contributed,plan.currency)}</b><small>Withdrawals</small><b>{plan.withdrawal_count}</b></div>
           <div className="savings-plan-operations">
             {plan.funding_enabled?<><label>Amount<input type="number" min="0.01" step="0.01" value={movementAmounts[plan.id]??""} onChange={e=>setMovementAmounts(current=>({...current,[plan.id]:e.target.value}))} placeholder="Enter amount"/></label><div><button type="button" disabled={movementBusy===plan.id} onClick={()=>void moveSavingsFunds(plan,"contribution")}>Add savings</button><button type="button" className="withdraw-action" disabled={movementBusy===plan.id} onClick={()=>void moveSavingsFunds(plan,"withdrawal")}>Withdraw</button></div></>:<p><ShieldCheck size={14}/> Contributions and withdrawals are locked until this savings product is approved for funding and your account and wallet meet verification requirements.</p>}
+            <div className="schedule-editor">
+              <b><CalendarDays size={14}/> Contribution schedule</b>
+              <div className="schedule-fields">
+                <label>Frequency<select value={scheduleFrequency[plan.id]??plan.contribution_frequency??"flexible"} onChange={e=>setScheduleFrequency(s=>({...s,[plan.id]:e.target.value}))}><option value="flexible">Flexible</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
+                <label>Planned amount<input type="number" min="0.01" step="0.01" disabled={(scheduleFrequency[plan.id]??plan.contribution_frequency)==="flexible"} value={scheduleAmounts[plan.id]??String(plan.scheduled_amount??"")} onChange={e=>setScheduleAmounts(s=>({...s,[plan.id]:e.target.value}))} placeholder="Amount"/></label>
+                <label>Next due date<input type="date" min={new Date().toISOString().slice(0,10)} disabled={(scheduleFrequency[plan.id]??plan.contribution_frequency)==="flexible"} value={scheduleDates[plan.id]??(plan.next_contribution_at?new Date(plan.next_contribution_at).toISOString().slice(0,10):"")} onChange={e=>setScheduleDates(s=>({...s,[plan.id]:e.target.value}))}/></label>
+              </div>
+              <label className="schedule-reminder"><input type="checkbox" checked={scheduleReminders[plan.id]??plan.reminder_enabled} onChange={e=>setScheduleReminders(s=>({...s,[plan.id]:e.target.checked}))}/> Remind me about upcoming contributions</label>
+              <div className="schedule-save"><small>Reminders do not move money. Automatic collection is disabled.</small><button type="button" disabled={scheduleBusy===plan.id} onClick={()=>void saveSavingsSchedule(plan)}>{scheduleBusy===plan.id?<LoaderCircle className="spin" size={14}/>:"Save schedule"}</button></div>
+            </div>
+            {plan.next_contribution_at&&<small className="next-due-label">Next planned contribution: {dateLabel(plan.next_contribution_at)}</small>}
             {plan.recent_activity?.length>0&&<div className="savings-activity"><b>Recent activity</b>{plan.recent_activity.map(item=><div key={item.id}><span>{item.movement_type==="contribution"?"Contribution":"Withdrawal"} · {dateLabel(item.created_at)}</span><strong>{item.movement_type==="contribution"?"+":"−"}{formatMoney(item.amount,item.currency)}</strong></div>)}</div>}
           </div>
         </article>):<div className="empty-state goal-empty">You have not created a savings plan yet. Choose an available option above to get started.</div>}</div>
-        <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Your savings are tracked securely</b><small>Plan creation and ledger-backed savings records are implemented. Money movements remain gated until product approval, verified KYC/account status and active wallet funding controls are in place. Scheduled auto-collection and interest payouts are not simulated.</small></div></div>
+        <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Your savings are tracked securely</b><small>Plan creation and ledger-backed savings records are implemented. Money movements remain gated until product approval, verified KYC/account status and active wallet funding controls are in place. Schedule preferences and due dates are saved. Reminder delivery requires a scheduled notification worker; automatic collection and interest payouts remain disabled.</small></div></div>
       </>}
       {active==="Total Cards"&&<>
         <div className="section-title page-section-heading"><div><h2>Osusu Dash Cards</h2><p>Manage the cards connected to your Osusu account.</p></div></div>
