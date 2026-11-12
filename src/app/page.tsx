@@ -18,6 +18,8 @@ type SavingsCircleMember = {user_id:string;display_name:string;member_role:strin
 type SavingsCircle = {id:string;name:string;owner_user_id:string;currency:"SLE"|"USD";contribution_amount:number|string;frequency:string;status:string;max_members:number;invite_code:string|null;invitation_expires_at:string|null;is_owner:boolean;member_count:number;members:SavingsCircleMember[];created_at:string};
 type OsusuNotification = { id:string; notification_type:string; title:string; message:string; read_at:string|null; created_at:string };
 type TransactionHistoryResult = { transactions:Tx[]; total_count:number; limit:number; offset:number };
+type SavingsHistoryItem = { id:string; savings_account_id:string; plan_name:string; movement_type:"contribution"|"withdrawal"; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; journal_entry_id:string; created_at:string };
+type SavingsHistoryResult = { transactions:SavingsHistoryItem[]; total_count:number; limit:number; offset:number };
 type SavingsActivity = { id:string; movement_type:"contribution"|"withdrawal"; amount:number|string; currency:"SLE"|"USD"; status:string; description:string|null; created_at:string };
 type SavingsPlan = { id:string; name:string; savings_type:string; currency:"SLE"|"USD"; target_amount:number|string|null; contribution_frequency:string|null; scheduled_amount:number|string|null; auto_contribute:boolean; status:string; starts_at:string; matures_at:string|null; plan_code:string|null; plan_name:string|null; funding_enabled:boolean; next_contribution_at:string|null; reminder_enabled:boolean; current_balance:number|string; total_contributed:number|string; contribution_count:number; withdrawal_count:number; recent_activity:SavingsActivity[] };
 
@@ -47,6 +49,16 @@ export default function OsusuPage() {
   const [historyCount,setHistoryCount] = useState(0);
   const [historyLoading,setHistoryLoading] = useState(false);
   const [historyError,setHistoryError] = useState("");
+  const [savingsHistorySearch,setSavingsHistorySearch] = useState("");
+  const [savingsHistoryStart,setSavingsHistoryStart] = useState("");
+  const [savingsHistoryEnd,setSavingsHistoryEnd] = useState("");
+  const [savingsHistoryType,setSavingsHistoryType] = useState("");
+  const [savingsHistoryPlan,setSavingsHistoryPlan] = useState("");
+  const [savingsHistoryPage,setSavingsHistoryPage] = useState(1);
+  const [savingsHistoryRows,setSavingsHistoryRows] = useState<SavingsHistoryItem[]>([]);
+  const [savingsHistoryCount,setSavingsHistoryCount] = useState(0);
+  const [savingsHistoryLoading,setSavingsHistoryLoading] = useState(false);
+  const [savingsHistoryError,setSavingsHistoryError] = useState("");
   const [savingsProducts,setSavingsProducts] = useState<SavingsProduct[]>([]);
   const [mySavings,setMySavings] = useState<SavingsPlan[]>([]);
   const [notifications,setNotifications] = useState<OsusuNotification[]>([]);
@@ -287,6 +299,30 @@ export default function OsusuPage() {
     window.setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
+  function exportSavingsActivity() {
+    if(!savingsHistoryRows.length) return;
+    const columns=["Activity ID","Date","Savings plan","Movement","Status","Currency","Amount","Journal reference"];
+    const safeText=(value:unknown)=>{
+      const text=String(value??"");
+      return /^\\s*[=+\\-@]/.test(text) ? `'${text}` : text;
+    };
+    const escapeCsv=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;
+    const rows=savingsHistoryRows.map(item=>[
+      item.id,item.created_at,safeText(item.plan_name),safeText(item.movement_type),
+      safeText(item.status),safeText(item.currency),item.amount,item.journal_entry_id
+    ]);
+    const csv=[columns,...rows].map(row=>row.map(escapeCsv).join(",")).join("\\r\\n");
+    const blob=new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;
+    link.download=`osusu-savings-activity-page-${savingsHistoryPage}-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+
   async function signOut() {
     if(!supabase)return;setBusy(true);const {error}=await supabase.auth.signOut();setBusy(false);
     if(error)setError(error.message);
@@ -323,6 +359,40 @@ export default function OsusuPage() {
     void loadHistory();
     return ()=>{cancelled=true;};
   },[supabase,session?.user.id,active,historyStart,historyEnd,historyPage,historySearch]);
+
+  useEffect(()=>{
+    if(!supabase || !session || active!=="Savings Account") return;
+    let cancelled=false;
+    const loadSavingsHistory=async()=>{
+      setSavingsHistoryLoading(true);
+      setSavingsHistoryError("");
+      const toExclusive=savingsHistoryEnd
+        ? new Date(new Date(`${savingsHistoryEnd}T00:00:00.000Z`).getTime()+86400000).toISOString()
+        : null;
+      const {data,error}=await supabase.rpc("osusu_get_my_savings_activity",{
+        p_savings_account_id:savingsHistoryPlan||null,
+        p_from:savingsHistoryStart?`${savingsHistoryStart}T00:00:00+00:00`:null,
+        p_to:toExclusive,
+        p_movement_type:savingsHistoryType||null,
+        p_limit:25,
+        p_offset:(savingsHistoryPage-1)*25,
+        p_search:savingsHistorySearch.trim()||null
+      });
+      if(cancelled)return;
+      if(error){
+        setSavingsHistoryError(error.message);
+        setSavingsHistoryRows([]);
+        setSavingsHistoryCount(0);
+      }else{
+        const result=data as SavingsHistoryResult;
+        setSavingsHistoryRows(result.transactions??[]);
+        setSavingsHistoryCount(Number(result.total_count)||0);
+      }
+      setSavingsHistoryLoading(false);
+    };
+    void loadSavingsHistory();
+    return ()=>{cancelled=true;};
+  },[supabase,session?.user.id,active,savingsHistoryPlan,savingsHistoryStart,savingsHistoryEnd,savingsHistoryType,savingsHistoryPage,savingsHistorySearch]);
 
   const totals=useMemo(()=>{
     const byCurrency:{SLE:number;USD:number}={SLE:0,USD:0};
@@ -444,6 +514,21 @@ export default function OsusuPage() {
             {plan.recent_activity?.length>0&&<div className="savings-activity"><b>Recent activity</b>{plan.recent_activity.map(item=><div key={item.id}><span>{item.movement_type==="contribution"?"Contribution":"Withdrawal"} · {dateLabel(item.created_at)}</span><strong>{item.movement_type==="contribution"?"+":"−"}{formatMoney(item.amount,item.currency)}</strong></div>)}</div>}
           </div>
         </article>):<div className="empty-state goal-empty">You have not created a savings plan yet. Choose an available option above to get started.</div>}</div>
+        <div className="section-title"><div><h2>Savings activity history</h2><p>Search and review confirmed contributions and withdrawals across your savings plans.</p></div><button type="button" onClick={exportSavingsActivity} disabled={!savingsHistoryRows.length||savingsHistoryLoading}><ArrowDownLeft size={15}/> Export this page</button></div>
+        <section className="history-filters" aria-label="Savings activity filters">
+          <label><span>SEARCH</span><input type="search" value={savingsHistorySearch} maxLength={100} onChange={event=>{setSavingsHistorySearch(event.target.value);setSavingsHistoryPage(1);}} placeholder="Plan, description, status or amount"/></label>
+          <label><span>FROM</span><input type="date" value={savingsHistoryStart} max={savingsHistoryEnd||undefined} onChange={event=>{setSavingsHistoryStart(event.target.value);setSavingsHistoryPage(1);}}/></label>
+          <label><span>TO</span><input type="date" value={savingsHistoryEnd} min={savingsHistoryStart||undefined} onChange={event=>{setSavingsHistoryEnd(event.target.value);setSavingsHistoryPage(1);}}/></label>
+          <label><span>ACTIVITY</span><select value={savingsHistoryType} onChange={event=>{setSavingsHistoryType(event.target.value);setSavingsHistoryPage(1);}}><option value="">All activity</option><option value="contribution">Contributions</option><option value="withdrawal">Withdrawals</option></select></label>
+          <label><span>SAVINGS PLAN</span><select value={savingsHistoryPlan} onChange={event=>{setSavingsHistoryPlan(event.target.value);setSavingsHistoryPage(1);}}><option value="">All plans</option>{mySavings.map(plan=><option key={plan.id} value={plan.id}>{plan.name}</option>)}</select></label>
+          <button type="button" className="history-clear" onClick={()=>{setSavingsHistorySearch("");setSavingsHistoryStart("");setSavingsHistoryEnd("");setSavingsHistoryType("");setSavingsHistoryPlan("");setSavingsHistoryPage(1);}}>Clear filters</button>
+        </section>
+        {savingsHistoryError&&<div className="notice" role="alert"><ShieldCheck size={16}/><span>{savingsHistoryError}</span></div>}
+        <section className="transactions" aria-live="polite">
+          {savingsHistoryLoading?<p className="empty-state">Loading your savings activity…</p>:savingsHistoryRows.length?savingsHistoryRows.map(item=><div className="transaction" key={item.id}><span className="transaction-icon">{item.movement_type==="contribution"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{item.plan_name} · {item.movement_type==="contribution"?"Contribution":"Withdrawal"}</b><small>{dateLabel(item.created_at)} · {item.status}{item.description? ` · ${item.description}`:""}</small></span><span className="transaction-amount"><b>{formatMoney(item.amount,item.currency)}</b><small>{item.currency}</small></span></div>):<p className="empty-state">No savings activity matches these filters.</p>}
+        </section>
+        <div className="history-pagination"><span>Showing {savingsHistoryCount===0?0:(savingsHistoryPage-1)*25+1}–{Math.min(savingsHistoryPage*25,savingsHistoryCount)} of {savingsHistoryCount}</span><div><button type="button" onClick={()=>setSavingsHistoryPage(page=>Math.max(1,page-1))} disabled={savingsHistoryPage===1||savingsHistoryLoading}>Previous</button><span>Page {savingsHistoryPage} of {Math.max(1,Math.ceil(savingsHistoryCount/25))}</span><button type="button" onClick={()=>setSavingsHistoryPage(page=>page+1)} disabled={savingsHistoryPage*25>=savingsHistoryCount||savingsHistoryLoading}>Next</button></div></div>
+        <p className="data-note">This history includes only confirmed ledger-linked savings movements. Export downloads the current page of up to 25 records.</p>
         <section className="circle-hub">
           <div className="circle-hub-heading"><div><span className="overline">SAVE TOGETHER</span><h2>Osusu Circle</h2><p>Create a group savings circle or join one with an invitation code.</p></div><span className="circle-icon"><Users size={21}/></span></div>
           <div className="circle-setup-grid">
