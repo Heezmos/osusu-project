@@ -212,7 +212,7 @@ export default function OsusuPage() {
               <label>Contribution frequency<select value={contributionFrequency} onChange={e=>setContributionFrequency(e.target.value)}><option value="flexible">Flexible</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
               {selectedPlanCode==="scheduled-saver"&&<label>Scheduled contribution amount<input type="number" min="0.01" step="0.01" value={scheduledAmount} onChange={e=>setScheduledAmount(e.target.value)} placeholder="Contribution amount" required/></label>}
             </div>
-            {selectedSavingsProduct.rate_status==="pending_approval"&&<div className="savings-caution"><ShieldCheck size={16}/> This product's rate, term and maturity conditions have not been approved. It cannot be opened yet.</div>}
+            {selectedSavingsProduct.rate_status==="pending_approval"&&<div className="savings-caution"><ShieldCheck size={16}/> This product rate, term and maturity conditions have not yet received approval. It cannot be opened yet.</div>}
             <div className="savings-form-actions"><button type="button" className="secondary-action" onClick={()=>setShowCreatePlan(false)}>Cancel</button><button className="primary-action" type="submit" disabled={savingBusy||!selectedSavingsProduct.is_available}>{savingBusy?<LoaderCircle className="spin" size={16}/>:<Plus size={16}/>} Create plan</button></div>
           </form>}
         </section>}
