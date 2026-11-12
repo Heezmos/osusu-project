@@ -515,7 +515,7 @@ export default function OsusuPage() {
           </div>
         </article>):<div className="empty-state goal-empty">You have not created a savings plan yet. Choose an available option above to get started.</div>}</div>
         <div className="section-title"><div><h2>Savings activity history</h2><p>Search and review confirmed contributions and withdrawals across your savings plans.</p></div><button type="button" onClick={exportSavingsActivity} disabled={!savingsHistoryRows.length||savingsHistoryLoading}><ArrowDownLeft size={15}/> Export this page</button></div>
-        <section className="history-filters" aria-label="Savings activity filters">
+        <section className="history-filters savings-activity-filters" aria-label="Savings activity filters">
           <label><span>SEARCH</span><input type="search" value={savingsHistorySearch} maxLength={100} onChange={event=>{setSavingsHistorySearch(event.target.value);setSavingsHistoryPage(1);}} placeholder="Plan, description, status or amount"/></label>
           <label><span>FROM</span><input type="date" value={savingsHistoryStart} max={savingsHistoryEnd||undefined} onChange={event=>{setSavingsHistoryStart(event.target.value);setSavingsHistoryPage(1);}}/></label>
           <label><span>TO</span><input type="date" value={savingsHistoryEnd} min={savingsHistoryStart||undefined} onChange={event=>{setSavingsHistoryEnd(event.target.value);setSavingsHistoryPage(1);}}/></label>
