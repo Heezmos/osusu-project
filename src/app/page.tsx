@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard, Copy, Users, QrCode, RefreshCw, FileText, Receipt,
   Eye, EyeOff, Home, Landmark, LockKeyhole, LogOut, PiggyBank, Search, ShieldCheck,
-  Sparkles, TrendingUp, Wallet, X, LoaderCircle, Plus, CalendarDays, Clock3, CircleDollarSign, Building2
+  Sparkles, TrendingUp, Wallet, X, LoaderCircle, Plus, CalendarDays, Clock3, Building2, Globe2
 } from "lucide-react";
 
 type WalletRow = { id:string; currency:"SLE"|"USD"; status:string; balance:number|string };
