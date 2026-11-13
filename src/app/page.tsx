@@ -3,10 +3,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import ExpansionHub from "@/components/expansion-hub";
-import "@/components/expansion-hub.css";
 import {
-  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard, Copy, Users,
+  ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bell, ChevronRight, CreditCard, Copy, Users, QrCode, RefreshCw, FileText, Receipt,
   Eye, EyeOff, Home, Landmark, LockKeyhole, LogOut, PiggyBank, Search, ShieldCheck,
   Sparkles, TrendingUp, Wallet, X, LoaderCircle, Plus, CalendarDays, Clock3, CircleDollarSign, Building2
 } from "lucide-react";
@@ -549,14 +547,22 @@ export default function OsusuPage() {
   const name=overview?.profile?.display_name||session.user.email?.split("@")[0]||"there";
   return <main className="osusu-app">
     <aside className="side-panel"><div className="brand"><span className="brand-symbol">o</span><span>osusu<small>BY DELIGHT VENTURES</small></span></div><p className="nav-caption">YOUR SPACE</p>
-      <nav className="primary-navigation" aria-label="Main dashboard navigation">{[{label:"Overview",Icon:Home},{label:"Payments",Icon:ArrowLeftRight},{label:"Services",Icon:Sparkles},{label:"Osusu Global",Icon:CircleDollarSign},{label:"Osusu Business",Icon:Building2},{label:"Savings Account",Icon:PiggyBank},{label:"Total Cards",Icon:CreditCard},{label:"Performance",Icon:TrendingUp},{label:"Account & Security",Icon:ShieldCheck}].map(({label,Icon})=><button type="button" key={label} className={`side-link ${active===label?"selected":""}`} aria-current={active===label?"page":undefined} onClick={()=>setActive(label)}><Icon size={18}/>{label}{active===label&&<i aria-hidden="true"/>}</button>)}</nav>
+      <nav className="primary-navigation" aria-label="Main dashboard navigation">{[{label:"Overview",Icon:Home},{label:"Digital Wallet",Icon:Wallet},{label:"Payments & Bank Services",Icon:ArrowLeftRight},{label:"Osusu Savings",Icon:PiggyBank},{label:"Dash Card",Icon:CreditCard},{label:"Financial Management",Icon:TrendingUp},{label:"Account & Security",Icon:ShieldCheck}].map(({label,Icon})=><button type="button" key={label} className={`side-link ${active===label?"selected":""}`} aria-current={active===label?"page":undefined} onClick={()=>setActive(label)}><Icon size={18}/>{label}{active===label&&<i aria-hidden="true"/>}</button>)}</nav>
       <div className="side-spacer"/><div className="side-help"><ShieldCheck size={19}/><div><b>Your money matters</b><span>Security is part of every step.</span></div></div><button className="side-link" onClick={signOut}><LogOut size={18}/>Sign out</button><div className="profile"><span className="avatar">{String(name).slice(0,2).toUpperCase()}</span><span><b>{name}</b><small>{session.user.email}</small></span></div>
     </aside>
     <section className="workspace"><header className="topbar"><div className="breadcrumb">My Osusu <ChevronRight size={14}/><b>{active}</b></div><div className="top-tools"><label className="search" aria-label="Search recent transactions"><Search size={16}/><input type="search" value={transactionSearch} onChange={event=>setTransactionSearch(event.target.value)} placeholder="Search transactions" aria-label="Search transactions"/></label><div className="notification-wrap"><button className="bell" type="button" aria-label="Open notifications" aria-expanded={showNotifications} onClick={()=>setShowNotifications(value=>!value)}><Bell size={19}/>{notifications.some(item=>!item.read_at)&&<i/>}</button>{showNotifications&&<section className="notification-panel"><div className="notification-heading"><b>Notifications</b><span>{notifications.filter(item=>!item.read_at).length} unread</span></div>{notifications.length?notifications.map(item=><article key={item.id} className={item.read_at?"notification-item":"notification-item unread"}><div><b>{item.title}</b><small>{dateLabel(item.created_at)}</small></div><p>{item.message}</p>{!item.read_at&&<button type="button" onClick={()=>void markNotificationRead(item.id)}>Mark as read</button>}</article>):<p className="notification-empty">You&apos;re all caught up. Important account and savings updates will appear here.</p>}</section>}</div><span className="avatar top-avatar">{String(name).slice(0,2).toUpperCase()}</span></div></header>
-      <div className="page-content"><div className="welcome"><div><span className="overline">YOUR MONEY. YOUR FUTURE.</span><h1>Welcome back, {name.split(" ")[0]}</h1><p>{active==="Overview"?"Your Osusu account overview, securely connected.":active==="Payments"?"Find people and manage payment requests.":active==="Savings Account"?"Your savings plans and account details.":active==="Total Cards"?"Your Osusu Dash Card services and status.":active==="Services"?"Discover everyday services as approved providers become available.":active==="Osusu Global"?"Explore international account services through authorised partners.":active==="Osusu Business"?"Prepare your merchant profile and storefront.":"A view of your recorded wallet activity and balances."}</p></div><span className="date-pill"><span/> {overview?.profile?.account_status??"Status unavailable"}</span></div>
+      <div className="page-content"><div className="welcome"><div><span className="overline">YOUR MONEY. YOUR FUTURE.</span><h1>Welcome back, {name.split(" ")[0]}</h1><p>{active==="Overview"?"Your Osusu account overview, securely connected.":active==="Payments & Bank Services"?"Find people and manage payment requests.":active==="Osusu Savings"?"Your savings plans and account details.":active==="Dash Card"?"Your Osusu Dash Card services and status.":active==="Services"?"Discover everyday services as approved providers become available.":active==="Osusu Global"?"Explore international account services through authorised partners.":active==="Osusu Business"?"Prepare your merchant profile and storefront.":"A view of your recorded wallet activity and balances."}</p></div><span className="date-pill"><span/> {overview?.profile?.account_status??"Status unavailable"}</span></div>
       {error&&<div className="notice"><ShieldCheck size={17}/><span>{error}</span><button onClick={()=>setError("")}><X size={16}/></button></div>}
-      {active==="Payments"&&<>
-        <div className="section-title page-section-heading"><div><h2>Osusu Payments</h2><p>Find people by their OsusuTag and send or manage payment requests.</p></div></div>
+      {active==="Digital Wallet"&&<>
+        <div className="section-title page-section-heading"><div><h2>Digital Wallet</h2><p>Your SLE and USD wallet balances, account activity and money access controls.</p></div></div>
+        <div className="account-grid"><section className="savings-hero"><div className="hero-top"><span><Wallet size={17}/> WALLET BALANCES</span><button onClick={()=>setHidden(!hidden)} aria-label={hidden?"Show balances":"Hide balances"}>{hidden?<Eye size={17}/>:<EyeOff size={17}/>}</button></div><div className="balance-pair"><div><small>SLE WALLET</small><div className="hero-balance">{hidden?"••••••":formatMoney(totals.SLE,"SLE")}</div></div><div><small>USD WALLET</small><div className="hero-balance">{hidden?"••••••":formatMoney(totals.USD,"USD")}</div></div></div><div className="hero-growth"><Sparkles size={14}/> Balances calculated from posted ledger entries</div><div className="hero-actions"><button className="lime-action" disabled title="Available after authorised payment integration"><ArrowDownLeft size={16}/> Add Money</button><button className="blue-action" disabled title="Available after authorised payment integration"><ArrowUpRight size={16}/> Withdraw</button></div></section><section className="spend-card"><div className="spend-title"><span>ACCOUNT STATUS</span><span className="spend-mark"><ShieldCheck size={16}/></span></div><h2>{overview?.profile?.account_status??"Status unavailable"}</h2><p>Wallet access and identity verification</p><button disabled>Manage wallet settings <ChevronRight size={15}/></button></section></div>
+        <div className="section-title"><div><h2>Wallet activity</h2><p>Recent incoming and outgoing entries from your ledger.</p></div><button onClick={()=>setActive("Financial Management")}>Full statements <ChevronRight size={15}/></button></div>
+        <section className="transactions">{transactions.length?transactions.slice(0,10).map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">No wallet activity yet.</p>}</section>
+        <div className="card-feature-grid"><article><ShieldCheck size={19}/><b>Available balance</b><small>Distinguish posted funds from pending or reserved amounts as account rails are connected.</small></article><article><Bell size={19}/><b>Instant activity alerts</b><small>Receive clear debit, credit and account-status notifications.</small></article><article><LockKeyhole size={19}/><b>Wallet protection</b><small>Secure sign-in and account verification protect access to your wallet.</small></article></div>
+        <p className="data-note">Deposits, withdrawals and wallet transfers are not enabled until authorised providers, safeguarding and reconciliation are in place.</p>
+      </>}
+      {active==="Payments & Bank Services"&&<>
+        <div className="section-title page-section-heading"><div><h2>Payments &amp; Bank Services</h2><p>Pay and receive through OsusuTag, manage payment requests and access supported bank and international payment services.</p></div></div>
         <section className="payments-identity-card">
           <div><span className="overline">YOUR PAYMENT ID</span><h2>{osusuTag?"@"+osusuTag:"Claim your OsusuTag"}</h2><p>{osusuTag?"Share this identity so other Osusu members can find you.":"Choose a unique, memorable identity between 3 and 20 characters."}</p></div>
           <form onSubmit={saveOsusuTag}>
@@ -567,7 +573,7 @@ export default function OsusuPage() {
         </section>
         <div className="payments-action-grid">
           <section className="payments-panel">
-            <span className="overline">SEND A REQUEST</span><h3>Find an Osusu member</h3>
+            <span className="overline">SEND A REQUEST</span><h3>Find a recipient</h3>
             <form onSubmit={lookupOsusuRecipient}>
               <label>Recipient OsusuTag<input value={recipientTag} onChange={e=>{setRecipientTag(e.target.value);setRecipient(null);}} placeholder="@theirtag" required/></label>
               <button type="submit" disabled={!recipientTag.trim()}>Find recipient</button>
@@ -583,6 +589,17 @@ export default function OsusuPage() {
           </section>
           <section className="payments-panel payments-safety"><ShieldCheck size={23}/><h3>Payment safety</h3><p>Always check the recipient&apos;s displayed name and OsusuTag before sending a request. Never share your password, PIN or verification code.</p><p><b>Important:</b> accepting a request is not a transfer. Osusu does not move money through this feature.</p></section>
         </div>
+        <section className="payments-panel" style={{marginTop:16}}>
+          <span className="overline">BANK &amp; INTERNATIONAL SERVICES</span><h3>More ways to move money</h3>
+          <div className="card-feature-grid">
+            <article><Landmark size={19}/><b>Bank transfers</b><small>Send to and receive from supported bank accounts after licensed partner integration.</small><span className="business-tool-status">Banking partner required</span></article>
+            <article><Smartphone size={19}/><b>Mobile-money transfers</b><small>Connect eligible local mobile-money networks through approved payment providers.</small><span className="business-tool-status">Payment rail required</span></article>
+            <article><Globe2 size={19}/><b>Osusu Global</b><small>International USD receiving, holding and cross-border payments through eligible regulated partners.</small><span className="business-tool-status">Cross-border partner required</span></article>
+            <article><QrCode size={19}/><b>QR &amp; merchant payments</b><small>Scan or present a payment QR and verify the recipient and amount before authorising.</small><span className="business-tool-status">Merchant network required</span></article>
+            <article><RefreshCw size={19}/><b>Payment tracking &amp; reversals</b><small>Clear pending, successful, failed and reversed states with traceable references and support pathways.</small><span className="business-tool-status">Provider status integration required</span></article>
+            <article><Users size={19}/><b>Saved beneficiaries</b><small>Keep trusted recipients and recent payment destinations easy to find.</small><span className="business-tool-status">Planned enhancement</span></article>
+          </div>
+        </section>
         <div className="section-title"><div><h2>Payment requests</h2><p>Incoming and outgoing requests linked to your Osusu account.</p></div><button type="button" onClick={()=>void handleRefreshPayments()} disabled={paymentsBusy}>Refresh</button></div>
         <section className="payment-request-list" aria-live="polite">
           {paymentsBusy?<p className="empty-state">Loading payment requests…</p>:paymentRequests.length?paymentRequests.map(request=><article className="payment-request-card" key={request.id}>
@@ -593,13 +610,10 @@ export default function OsusuPage() {
               {request.direction==="outgoing"&&request.status==="pending"&&<button type="button" className="secondary" onClick={()=>void cancelPaymentRequest(request.id)} disabled={paymentsBusy}>Cancel request</button>}
               {request.status!=="pending"&&<span>{request.status==="accepted"?"Acknowledged · not paid":request.status}</span>}
             </div>
-          </article>):<p className="empty-state">No payment requests yet. Find an Osusu member to send your first request.</p>}
+          </article>):<p className="empty-state">No payment requests yet. Find a recipient to send your first request.</p>}
         </section>
         <p className="data-note">Payment requests are coordination records only. Accepting a request does not debit a wallet or confirm that funds have been received.</p>
       </>}
-      {active==="Services"&&<ExpansionHub section="Services"/>}
-      {active==="Osusu Global"&&<ExpansionHub section="Osusu Global"/>}
-      {active==="Osusu Business"&&<ExpansionHub section="Osusu Business"/>}
       {active==="Account & Security"&&<>
         <div className="section-title page-section-heading"><div><h2>Account &amp; Security</h2><p>Review your sign-in identity and keep your Osusu account secure.</p></div></div>
         <section className="security-overview-card">
@@ -624,7 +638,7 @@ export default function OsusuPage() {
         <div className="section-title"><div><h2>Recent transactions</h2><p>Latest activity from your wallet ledger.</p></div><button onClick={()=>setActive("Performance")}>View activity <ChevronRight size={15}/></button></div>
         <section className="transactions">{filteredTransactions.length?filteredTransactions.slice(0,5).map(tx=><div className="transaction" key={tx.id}><span className="transaction-icon">{tx.direction==="credit"?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><span className="transaction-name"><b>{tx.description||tx.transaction_type.replaceAll("_"," ")}</b><small>{dateLabel(tx.created_at)} · {tx.status}</small></span><span className="transaction-amount"><b>{hidden?"••••":formatMoney(tx.amount,tx.currency)}</b><small>{tx.direction}</small></span></div>):<p className="empty-state">{transactionSearch.trim()?"No recent transactions match your search.": "No transactions yet. Verified wallet activity will appear here."}</p>}</section>
       </>}
-      {active==="Savings Account"&&<>
+      {active==="Osusu Savings"&&<>
         <div className="section-title page-section-heading"><div><h2>Osusu Savings</h2><p>Choose a savings style, create a plan and track your progress.</p></div><button type="button" onClick={()=>setShowCreatePlan(!showCreatePlan)}><Plus size={15}/>{showCreatePlan?"Close setup":"Create savings plan"}</button></div>
         {message&&<div className="auth-message savings-message">{message}</div>}
         <div className="savings-summary-grid">
@@ -731,15 +745,26 @@ export default function OsusuPage() {
         </section>
         <div className="support-banner"><span><ShieldCheck size={18}/></span><div><b>Your savings are tracked securely</b><small>Plan creation and ledger-backed savings records are implemented. Money movements remain gated until product approval, verified KYC/account status and active wallet funding controls are in place. Schedule preferences and due dates are saved. Reminder delivery requires a scheduled notification worker; automatic collection and interest payouts remain disabled.</small></div></div>
       </>}
-      {active==="Total Cards"&&<>
-        <div className="section-title page-section-heading"><div><h2>Osusu Dash Cards</h2><p>Manage the cards connected to your Osusu account.</p></div></div>
+      {active==="Dash Card"&&<>
+        <div className="section-title page-section-heading"><div><h2>Dash Card</h2><p>Manage your virtual and physical Osusu cards, card activity and security controls.</p></div></div>
         <section className="card-readiness-panel"><div className="card-illustration"><CreditCard size={34}/><span>OSUSU</span><small>DASH CARD</small><i>•••• &nbsp; •••• &nbsp; •••• &nbsp; ••••</i></div><div className="card-readiness-copy"><span className="overline">CARD SERVICES</span><h2>Your Dash Card space</h2><p>No card has been issued or linked to this account yet. Card issuance and card controls will appear here after an authorised card-issuer integration is completed.</p><span className="status-chip">Issuance not available yet</span></div></section>
         <div className="section-title"><div><h2>Card features</h2><p>These controls will become available when card services are activated.</p></div></div>
-        <div className="card-feature-grid"><article><LockKeyhole size={19}/><b>Freeze and unfreeze</b><small>Temporarily secure an issued card.</small></article><article><Wallet size={19}/><b>Card spending</b><small>Review card transactions and spending.</small></article><article><ShieldCheck size={19}/><b>Card security</b><small>Manage limits and security settings.</small></article></div>
+        <div className="card-feature-grid"><article><LockKeyhole size={19}/><b>Freeze &amp; unfreeze</b><small>Temporarily lock a card if it is misplaced or suspicious activity is detected.</small></article><article><Wallet size={19}/><b>Spending controls</b><small>Set daily or transaction limits and manage online, POS and ATM usage.</small></article><article><ShieldCheck size={19}/><b>PIN &amp; card security</b><small>Change or reset the card PIN and review security settings.</small></article><article><ArrowLeftRight size={19}/><b>Card transactions</b><small>Review card purchases, declines, refunds and settlement status.</small></article><article><Globe2 size={19}/><b>Virtual card</b><small>Use a virtual card for eligible online purchases after issuer activation.</small></article><article><CreditCard size={19}/><b>Physical card</b><small>Request, activate and manage a physical card through an approved issuer.</small></article></div>
       </>}
-      {active==="Performance"&&<>
-        <div className="section-title page-section-heading"><div><h2>Financial performance</h2><p>Your wallet activity and transaction history, retrieved securely for your account.</p></div></div>
+      {active==="Financial Management"&&<>
+        <div className="section-title page-section-heading"><div><h2>Financial Management</h2><p>Understand your spending, track your financial position and manage personal or business finances.</p></div></div>
         <div className="savings-summary-grid"><article className="section-stat"><span>FILTERED TRANSACTIONS</span><strong>{historyCount}</strong><small>Matching records across your account</small></article><article className="section-stat"><span>SLE WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.SLE,"SLE")}</strong><small>From posted ledger entries</small></article><article className="section-stat"><span>USD WALLET BALANCE</span><strong>{hidden?"••••••":formatMoney(totals.USD,"USD")}</strong><small>From posted ledger entries</small></article></div>
+        <section className="business-setup" style={{marginTop:18}}>
+          <div><span className="overline">OSUSU BUSINESS</span><h3>Business finance workspace</h3><p>Business account and finance tools sit within Financial Management as an account workspace—not a separate core service.</p></div>
+          <div className="card-feature-grid">
+            <article><Building2 size={19}/><b>Business account</b><small>Dedicated business account profile and SLE/USD balances, subject to authorised account issuance.</small><span className="business-tool-status">Partner account required</span></article>
+            <article><ArrowDownLeft size={19}/><b>Collect payments</b><small>Payment requests, verified collections and business payment references.</small><span className="business-tool-status">Payment rail required</span></article>
+            <article><FileText size={19}/><b>Invoices &amp; records</b><small>Create invoices, track due amounts and match payments to records.</small><span className="business-tool-status">Planned business tool</span></article>
+            <article><Receipt size={19}/><b>Expense management</b><small>Record expenses, organise categories and review business spending.</small><span className="business-tool-status">Planned business tool</span></article>
+            <article><Users size={19}/><b>Team roles &amp; approvals</b><small>Set staff permissions and approval steps for business transactions.</small><span className="business-tool-status">Planned security feature</span></article>
+            <article><TrendingUp size={19}/><b>Cash flow &amp; reports</b><small>Track money in and out, supplier payments, payroll batches and business statements.</small><span className="business-tool-status">Planned business tool</span></article>
+          </div>
+        </section>
         <div className="section-title"><div><h2>Transaction history</h2><p>Search and filter your account records by date, description, type, status or amount.</p></div><button type="button" onClick={exportTransactions} disabled={!historyRows.length||historyLoading}><ArrowDownLeft size={15}/> Export this page</button></div>
         <section className="history-filters" aria-label="Transaction history filters">
           <label><span>SEARCH</span><input type="search" value={historySearch} maxLength={100} onChange={event=>{setHistorySearch(event.target.value);setHistoryPage(1);}} placeholder="Description, type, status, amount"/></label>
