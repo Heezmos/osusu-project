@@ -41,11 +41,11 @@ npm run dev
 
 The current dashboard preview works without a configured Supabase project. The branch now includes the browser client, request-scoped server client and Next.js middleware session-refresh foundation using `@supabase/ssr`.
 
-To configure a **new, dedicated DVL Connect Supabase project**, copy `.env.example` to `.env.local` and set:
+DVL Connect uses the existing **DVL Projects** Supabase project (`dadjxxjqqprzlroltpra`). It does not require a new Supabase project. Copy `.env.example` to `.env.local` and set:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-Do not reuse Osusu credentials or another DVL venture's database. Never commit secrets or expose a service-role key through a `NEXT_PUBLIC_*` variable.
+DVL Connect data will be isolated in its own `dvl_connect` schema. The existing `osusu` schema and the other DVL venture schemas/tables must remain untouched. Never commit secrets or expose a service-role key through a `NEXT_PUBLIC_*` variable.
 
 Authentication screens, route-level authorisation, organisation membership, database schema and row-level security are **not yet implemented**. Middleware session refresh alone does not protect application routes. Those controls must be implemented and tested before real customer data is used.
 
