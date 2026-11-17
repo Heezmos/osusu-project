@@ -113,7 +113,7 @@ export default function DvlConnectPage() {
       // An unauthenticated visitor is expected to have no session yet.
       // Supabase reports that normal state as AuthSessionMissingError; do not
       // display it as a failure on the sign-in screen.
-      if (error && error.name !== "AuthSessionMissingError" && error.message !== "Auth session missing!") {
+      if (error && error.message !== "Auth session missing!") {
         setAuthError(error.message);
       } else {
         setAuthError("");
