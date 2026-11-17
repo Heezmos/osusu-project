@@ -2,7 +2,7 @@
 
 DVL Connect is an African-focused digital infrastructure platform that helps independent business systems exchange data, trigger events and coordinate workflows securely and reliably.
 
-It serves DVL-owned ventures and external businesses, institutions, software vendors and developers. The initial market is Sierra Leone, with a roadmap for wider African markets.
+It serves DVL-owned ventures and external businesses, institutions, software vendors and developers. The initial market is Sierra Leone, followed by wider African markets.
 
 ## Product scope
 
@@ -18,44 +18,53 @@ It serves DVL-owned ventures and external businesses, institutions, software ven
 
 The initial product does **not** process payments, connect to banks or mobile-money rails, operate consumer wallets, hold funds, issue cards, make payouts or perform financial settlements. Any future financial connectivity requires authorised partners, regulatory review and separate approval. DVL Connect is not presented as a regulated payment provider.
 
-## Preview status
+## Current implementation
 
-This branch is being repurposed from an earlier Osusu product codebase. The current dashboard is a local interactive preview using fictional sample data. Buttons and workflows simulate actions in the browser only; no real integrations, external webhooks, production credentials or live customer data are used.
+The dashboard now uses Supabase Auth and the DVL Connect database schema for account sessions, workspace creation/loading and API project creation. It no longer presents fabricated request metrics or fake connected systems as live operational data.
 
-## Technology foundation
+The following modules remain planned and are not yet operational: connector execution, API gateway/request telemetry, workflow engine, event processing, webhook delivery, developer-issued API credentials and team invitations/role administration.
 
-- Next.js App Router
-- React and TypeScript
-- Supabase client libraries retained for future platform services
-- Vercel-compatible deployment
-- GitHub source control
+## Supabase environment
 
-The existing Osusu database migrations and financial application logic are not part of the DVL Connect product design. They must not be applied to a DVL Connect Supabase project. New DVL Connect database objects and policies require separate review and implementation.
+DVL Connect uses the existing **DVL Projects** Supabase project:
+
+- Project ref: `dadjxxjqqprzlroltpra`
+- URL: `https://dadjxxjqqprzlroltpra.supabase.co`
+- Core schema: `dvl_connect`
+- Private schema: `dvl_connect_private`
+
+In Supabase Dashboard → Project Settings → API → Exposed schemas, add **only** `dvl_connect`. Do not expose `dvl_connect_private`. The private schema contains credential storage and must remain inaccessible to browser clients.
+
+Copy `.env.example` to `.env.local` and set:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+Use a publishable key in browser/server-rendered application code. Never commit secrets or expose a service-role key through a `NEXT_PUBLIC_*` variable. Any service-role operation must run only in a protected server-side worker or route with explicit authorization.
+
+## Database foundation
+
+The `dvl_connect` schema contains organisation, organisation-membership, API-project and audit-log foundations with row-level security. The `dvl_connect_private` schema contains protected API credential storage with no client grants and a deny-all RLS policy. API secrets are not yet issued or accepted by a gateway.
+
+The old Osusu schema and Osusu-specific public RPC functions have been retired from this Supabase project. Existing unrelated DVL venture tables remain in place. Historical Osusu migration files and design documents remain in the Git repository as archived development history; do not apply them to this project.
 
 ## Local development
 
 ```bash
 npm install
 npm run dev
+npm run lint
+npm run build
 ```
 
-The current dashboard preview works without a configured Supabase project. The branch now includes the browser client, request-scoped server client and Next.js middleware session-refresh foundation using `@supabase/ssr`.
+## Delivery milestones
 
-DVL Connect uses the existing **DVL Projects** Supabase project (`dadjxxjqqprzlroltpra`). It does not require a new Supabase project. Copy `.env.example` to `.env.local` and set:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-
-DVL Connect data will be isolated in its own `dvl_connect` schema. The existing `osusu` schema and the other DVL venture schemas/tables must remain untouched. Never commit secrets or expose a service-role key through a `NEXT_PUBLIC_*` variable.
-
-Authentication screens, route-level authorisation, organisation membership, database schema and row-level security are **not yet implemented**. Middleware session refresh alone does not protect application routes. Those controls must be implemented and tested before real customer data is used.
-
-## Roadmap
-
-1. Validate the preview with internal DVL ventures and selected pilot customers.
-2. Define tenant, organisation, access-control and API project foundations.
-3. Implement secure API credentials, sandbox environments and integration registry.
-4. Add event delivery, retries, workflow execution and observability.
-5. Introduce commercial onboarding, subscriptions and usage-based pricing after validation.
+1. Complete API schema exposure, authentication and workspace access verification.
+2. Implement organisation membership administration and invitation workflows.
+3. Implement secure API credential issuance, rotation and revocation.
+4. Build API gateway, request logging and per-tenant rate controls.
+5. Add connector framework, mappings, events, webhooks and durable workers.
+6. Add workflow orchestration, retries, dead-letter handling and monitoring.
+7. Introduce commercial onboarding, subscriptions and usage-based pricing after pilot validation.
 
 ## Product principles
 
