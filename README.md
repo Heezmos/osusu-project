@@ -1,41 +1,54 @@
-# Osusu — a Delight Ventures product
+# DVL Connect — Digital Infrastructure by Delight Ventures
 
-Osusu is a digital wallet, payments, savings and financial-management product being developed under Delight Ventures Limited (DVL). It is not a separate legal entity.
+DVL Connect is an African-focused digital infrastructure platform that helps independent business systems exchange data, trigger events and coordinate workflows securely and reliably.
 
-## Product structure
+It serves DVL-owned ventures and external businesses, institutions, software vendors and developers. The initial market is Sierra Leone, with a roadmap for wider African markets.
 
-The five core services are:
-1. Digital Wallet — SLE and USD wallet experiences.
-2. Payments & Bank Services — local and eligible international payment methods, bank linking through authorised providers, and transparent FX.
-3. Osusu Savings — personal goals, group Osusu circles and fixed-term plans.
-4. Dash Card — virtual and physical card management, subject to an approved issuer.
-5. Financial Management — spending insights, savings progress, statements and reports.
+## Product scope
 
-Supporting capabilities include KYC, secure account management, transaction receipts and history, payment reconciliation, notifications, reminders, customer support, interest calculators, referrals and financial reports.
+- API development and connectivity
+- Enterprise systems integration (ERP, CRM, HR, payroll, accounting, inventory, logistics, e-commerce and education)
+- Workflow orchestration and automation
+- Data exchange and synchronisation
+- Events, webhooks and notifications
+- Developer portal, documentation, sandbox and integration tooling
+- Monitoring, logs, error handling and operational visibility
 
-## Technology direction
+## Initial exclusions
 
-- Next.js App Router + TypeScript
-- Supabase Auth, PostgreSQL and Edge Functions (DVL-approved project and isolated Osusu schema/tables)
-- Vercel deployment
+The initial product does **not** process payments, connect to banks or mobile-money rails, operate consumer wallets, hold funds, issue cards, make payouts or perform financial settlements. Any future financial connectivity requires authorised partners, regulatory review and separate approval. DVL Connect is not presented as a regulated payment provider.
+
+## Preview status
+
+This branch is being repurposed from an earlier Osusu product codebase. The current dashboard is a local interactive preview using fictional sample data. Buttons and workflows simulate actions in the browser only; no real integrations, external webhooks, production credentials or live customer data are used.
+
+## Technology foundation
+
+- Next.js App Router
+- React and TypeScript
+- Supabase client libraries retained for future platform services
+- Vercel-compatible deployment
 - GitHub source control
 
-## Safety and compliance boundaries
-
-The current application is a UI prototype. It does not accept deposits, move money, issue cards, calculate payable interest or initiate real payments. Do not connect live financial rails until DVL confirms the appropriate regulatory permissions, contracts, provider eligibility, safeguarding arrangements, KYC/AML controls and operational reconciliation. PayPal availability must be through an eligible authorised arrangement; never bypass geographic or account restrictions. Bank linking must use authorised providers and must never collect bank passwords.
+The existing Osusu database migrations and financial application logic are not part of the DVL Connect product design. They must not be applied to a DVL Connect Supabase project. New DVL Connect database objects and policies require separate review and implementation.
 
 ## Local development
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-Required public configuration is intentionally optional while the UI prototype is being developed. Never commit secrets. See `.env.example` for placeholders.
+Optional Supabase configuration is not required for the current preview. Never commit secrets or service-role keys.
 
-## Status
+## Roadmap
 
-Phase 1: repository foundation and customer dashboard prototype.
-Phase 2: confirm shared DVL Supabase project architecture, isolated Osusu schema, Auth and RLS.
-Phase 3: implement ledger-backed wallet and payment-provider sandbox flows.
+1. Validate the preview with internal DVL ventures and selected pilot customers.
+2. Define tenant, organisation, access-control and API project foundations.
+3. Implement secure API credentials, sandbox environments and integration registry.
+4. Add event delivery, retries, workflow execution and observability.
+5. Introduce commercial onboarding, subscriptions and usage-based pricing after validation.
+
+## Product principles
+
+API-first, modular, tenant-isolated, secure by default, auditable, observable and designed to avoid unnecessary complexity before customer demand is validated.
