@@ -19,7 +19,7 @@ type ApiProject = {
   created_at: string;
 };
 type Section = "Overview" | "API Projects" | "Integrations" | "Workflows" | "Events & Webhooks" | "Activity & Logs" | "Developer Portal" | "Team & Access" | "Settings";
-type AuthUserLookup = { data: { user: { email?: string | null } | null }; error: { message: string } | null };
+type AuthUserLookup = { data: { user: { id: string; email?: string | null } | null }; error: { message: string } | null };
 
 const navigation: { label: Section; icon: typeof Activity; group: string }[] = [
   { label: "Overview", icon: Layers3, group: "Workspace" },
