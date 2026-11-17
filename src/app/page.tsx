@@ -7,6 +7,7 @@ import {
   Terminal, Webhook, Workflow, Zap
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 type Organisation = { id: string; name: string; slug: string };
 type ApiProject = {
@@ -114,7 +115,7 @@ export default function DvlConnectPage() {
       setAuthReady(true);
       if (data.user) void loadWorkspace(data.user.id);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (!active) return;
       const user = session?.user;
       setUserEmail(user?.email ?? "");
