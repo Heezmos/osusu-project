@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Osusu — Save together. Grow together.",
-  description: "A smarter way to save, pay and grow. An Osusu product by Delight Ventures.",
+  title: "DVL Connect — Digital Infrastructure by Delight Ventures",
+  description: "Connect business systems, exchange data and orchestrate workflows with DVL Connect.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
