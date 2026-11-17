@@ -110,7 +110,14 @@ export default function DvlConnectPage() {
     void supabase.auth.getUser().then((result: AuthUserLookup) => {
       const { data, error } = result;
       if (!active) return;
-      if (error) setAuthError(error.message);
+      // An unauthenticated visitor is expected to have no session yet.
+      // Supabase reports that normal state as AuthSessionMissingError; do not
+      // display it as a failure on the sign-in screen.
+      if (error && error.name !== "AuthSessionMissingError" && error.message !== "Auth session missing!") {
+        setAuthError(error.message);
+      } else {
+        setAuthError("");
+      }
       setUserEmail(data.user?.email ?? "");
       setAuthReady(true);
       if (data.user) void loadWorkspace(data.user.id);
@@ -119,6 +126,7 @@ export default function DvlConnectPage() {
       if (!active) return;
       const user = session?.user;
       setUserEmail(user?.email ?? "");
+      if (user) setAuthError("");
       setAuthReady(true);
       if (user && _event !== "INITIAL_SESSION") void Promise.resolve().then(() => loadWorkspace(user.id));
       else { setOrganisation(null); setProjects([]); }
