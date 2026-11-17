@@ -94,7 +94,7 @@ export default function DvlConnectPage() {
       if (result.error) throw result.error;
       setProjects((result.data ?? []) as ApiProject[]);
     } catch (cause) {
-      setDataError(cause instanceof Error ? cause.message : "Unable to load your DVL Connect workspace.");
+      setDataError(readErrorMessage(cause, "Unable to load your DVL Connect workspace."));
     } finally {
       setLoadingData(false);
     }
@@ -179,7 +179,7 @@ export default function DvlConnectPage() {
       setProjectName(""); setProjectDescription(""); setEnvironment("sandbox");
       setShowCreate(false); setNotice("API project saved to your DVL Connect workspace.");
     } catch (cause) {
-      setDataError(cause instanceof Error ? cause.message : "The API project could not be created.");
+      setDataError(readErrorMessage(cause, "The API project could not be created."));
     } finally { setSavingProject(false); }
   }
 
@@ -258,6 +258,18 @@ export default function DvlConnectPage() {
       {showCreate && <div className="modal-backdrop" onClick={() => setShowCreate(false)}><form className="modal" onSubmit={createProject} onClick={e => e.stopPropagation()}><button type="button" className="modal-close" onClick={() => setShowCreate(false)}>×</button><div className="modal-icon"><Code2 size={20}/></div><h2>Create API project</h2><p>Create a project record in your organisation. No live API credential is generated yet.</p><label>Project name<input autoFocus value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="e.g. Education Data API" required maxLength={120}/></label><label>Description<input value={projectDescription} onChange={e => setProjectDescription(e.target.value)} placeholder="What will this project connect?"/></label><label>Environment<select value={environment} onChange={e => setEnvironment(e.target.value as typeof environment)}><option value="development">Development</option><option value="sandbox">Sandbox</option><option value="production">Production</option></select></label><div className="modal-hint"><ShieldCheck size={15}/> Stored with organisation-level access controls</div><div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => setShowCreate(false)}>Cancel</button><button className="button button-primary" type="submit" disabled={savingProject}><Plus size={15}/>{savingProject ? "Saving…" : "Create project"}</button></div></form></div>}
     </main>
   );
+}
+
+
+function readErrorMessage(cause: unknown, fallback: string): string {
+  if (cause && typeof cause === "object") {
+    const details = cause as { message?: unknown; hint?: unknown; code?: unknown };
+    const message = typeof details.message === "string" ? details.message : "";
+    const hint = typeof details.hint === "string" ? details.hint : "";
+    const code = typeof details.code === "string" ? details.code : "";
+    if (message) return [code ? `[${code}]` : "", message, hint].filter(Boolean).join(" — ");
+  }
+  return cause instanceof Error ? cause.message : fallback;
 }
 
 function Metric({ label, value, note, icon: Icon }: { label: string; value: string; note: string; icon: typeof Activity }) {
