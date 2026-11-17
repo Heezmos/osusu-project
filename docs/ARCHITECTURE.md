@@ -56,7 +56,7 @@ A persistent worker and durable queue are recommended for long-running workflows
 - events, event_subscriptions, webhooks, webhook_deliveries
 - audit_logs, notifications, usage_records, subscription_plans, organisation_subscriptions
 
-These are design proposals, not implemented tables. Use organisation ownership, UUID identifiers, UTC timestamps, tenant-aware indexes and strict row-level security. Enforce same-tenant relationships in server-side logic as well as database constraints. Never expose service-role credentials to browsers.
+The initial implemented subset is organisations, organisation_members, api_projects and audit_logs in dvl_connect, plus api_credentials in the unexposed dvl_connect_private schema. Other listed domains remain proposals. Use organisation ownership, UUID identifiers, UTC timestamps, tenant-aware indexes and strict row-level security. Enforce same-tenant relationships in server-side logic as well as database constraints. Never expose service-role credentials to browsers.
 
 ## Proposed API conventions
 
@@ -71,15 +71,27 @@ Proposed base URL: `https://api.dvlconnect.com/v1` (not registered or deployed).
 - Maintain immutable or append-only audit evidence for sensitive actions.
 - Define data retention, backups, recovery objectives and incident response before production.
 
-## Preview implementation status
+## Implementation status — 17 November 2026
 
-The current branch contains a browser-only product preview with fictional data and simulated interactions. It does not make external API calls, deliver webhooks, persist workflows, authenticate users or connect to Supabase. Existing Osusu financial migrations and backend routines are not part of this product and must not be applied to DVL Connect.
+The DVL Connect branch now has a Supabase Auth sign-in/sign-up experience and a dashboard connected to the existing DVL Projects database. The dashboard creates or loads the signed-in user's organisation and supports creating/listing API project records.
+
+Database foundations are applied and tracked in supabase/migrations:
+- dvl_connect.organisations, organisation_members, api_projects and audit_logs.
+- dvl_connect_private.api_credentials is protected by RLS, a deny-all client policy and no client table grants.
+- Tenant-aware policies restrict organisations and projects to active members and their permitted roles.
+- Creator membership is inserted by a database trigger. Direct client writes to membership are disabled pending a dedicated invitation and role-administration workflow.
+- The old Osusu schema, its Osusu RPCs and the Osusu savings-reminder cron route have been retired. Other DVL venture tables remain in the shared project.
+
+The dvl_connect schema still needs to be added to Supabase Project Settings → API → Exposed schemas before browser Data API requests can work. Do not expose dvl_connect_private.
+
+The current application does not yet issue API credentials, run a gateway, deliver webhooks, execute workflows, or provide live request metrics. Integration, event, workflow and operational screens must remain clearly marked as planned until their backend is implemented.
 
 ## Delivery milestones
 
-1. Preview, architecture validation and pilot discovery.
-2. Organisation/tenant model, identity, roles and audit foundations.
-3. API projects, credentials, sandbox and request tracking.
-4. Connector framework, mappings, events, webhooks and durable workers.
-5. Workflow orchestration, retries, dead-letter queue and monitoring.
-6. Commercial onboarding, pricing and external developer access.
+1. Complete API schema exposure and verify sign-up, sign-in, organisation creation and API project CRUD.
+2. Implement organisation membership administration and invitation workflows.
+3. Implement secure API credential issuance, rotation and revocation.
+4. Build API gateway, request logging and per-tenant rate controls.
+5. Add connector framework, mappings, events, webhooks and durable workers.
+6. Add workflow orchestration, retries, dead-letter handling and monitoring.
+7. Introduce commercial onboarding, subscriptions and usage-based pricing after pilot validation.
