@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (resetError) throw resetError;
-      setMessage("If an Osusu account exists for that email address, a password-reset link will be sent. Please check your inbox and spam folder.");
+      setMessage("If an DVL Connect account exists for that email address, a password-reset link will be sent. Please check your inbox and spam folder.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "We could not request a password reset. Please try again.");
     } finally {
@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
       <section className="account-auth-card">
         <span className="overline">ACCOUNT RECOVERY</span>
         <h1>Reset your password</h1>
-        <p>Enter the email address associated with your Osusu account. We’ll send a secure reset link if an account matches.</p>
+        <p>Enter the email address associated with your DVL Connect account. We’ll send a secure reset link if an account matches.</p>
         <form onSubmit={submit}>
           <label htmlFor="recovery-email">Email address</label>
           <input id="recovery-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
