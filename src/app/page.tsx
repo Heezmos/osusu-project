@@ -2,8 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowRight, Blocks, BookOpen, Check, ChevronRight, Code2, Database,
-  KeyRound, Layers3, Link2, LockKeyhole, LogOut, Plus, RefreshCw, ShieldCheck,
+  Activity, ArrowRight, Blocks, BookOpen, Check, ChevronRight, Code2,
+  Layers3, Link2, LockKeyhole, LogOut, Plus, RefreshCw, ShieldCheck,
   Terminal, Webhook, Workflow, Zap
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -63,13 +63,14 @@ export default function DvlConnectPage() {
     setDataError("");
     try {
       const db = supabase.schema("dvl_connect");
-      let { data: org, error: orgError } = await db
+      const { data: initialOrg, error: orgError } = await db
         .from("organisations")
         .select("id,name,slug")
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
       if (orgError) throw orgError;
+      let org = initialOrg;
 
       if (!org) {
         const slug = `dvl-workspace-${userId.slice(0, 8)}`;
@@ -190,7 +191,7 @@ export default function DvlConnectPage() {
       <section className="account-auth-card">
         <span className="overline">DELIGHT VENTURES · DIGITAL INFRASTRUCTURE</span>
         <h1>{authMode === "signin" ? "Welcome to DVL Connect" : "Create your DVL Connect account"}</h1>
-        <p>Sign in to manage your organisation's API projects, integrations and workflows.</p>
+        <p>Sign in to manage your organisation&apos;s API projects, integrations and workflows.</p>
         <form onSubmit={submitAuth}>
           <label htmlFor="auth-email">Email address</label>
           <input id="auth-email" type="email" autoComplete="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="you@company.com" required />
