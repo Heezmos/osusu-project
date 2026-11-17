@@ -19,6 +19,7 @@ type ApiProject = {
   created_at: string;
 };
 type Section = "Overview" | "API Projects" | "Integrations" | "Workflows" | "Events & Webhooks" | "Activity & Logs" | "Developer Portal" | "Team & Access" | "Settings";
+type AuthUserLookup = { data: { user: { email?: string | null } | null }; error: { message: string } | null };
 
 const navigation: { label: Section; icon: typeof Activity; group: string }[] = [
   { label: "Overview", icon: Layers3, group: "Workspace" },
@@ -105,7 +106,8 @@ export default function DvlConnectPage() {
       return;
     }
     let active = true;
-    void supabase.auth.getUser().then(({ data, error }) => {
+    void supabase.auth.getUser().then((result: AuthUserLookup) => {
+      const { data, error } = result;
       if (!active) return;
       if (error) setAuthError(error.message);
       setUserEmail(data.user?.email ?? "");
