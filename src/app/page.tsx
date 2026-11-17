@@ -37,6 +37,7 @@ export default function DvlConnectPage() {
     try { return createClient(); } catch { return null; }
   }, []);
   const [userEmail, setUserEmail] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
   const [authReady, setAuthReady] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [password, setPassword] = useState("");
@@ -115,7 +116,7 @@ export default function DvlConnectPage() {
       const user = session?.user;
       setUserEmail(user?.email ?? "");
       setAuthReady(true);
-      if (user) void loadWorkspace(user.id);
+      if (user && _event !== "INITIAL_SESSION") void Promise.resolve().then(() => loadWorkspace(user.id));
       else { setOrganisation(null); setProjects([]); }
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
@@ -126,7 +127,7 @@ export default function DvlConnectPage() {
     if (!supabase) return;
     setAuthBusy(true); setAuthError(""); setAuthMessage("");
     try {
-      const email = userEmail.trim();
+      const email = authEmail.trim();
       if (authMode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -192,7 +193,7 @@ export default function DvlConnectPage() {
         <p>Sign in to manage your organisation's API projects, integrations and workflows.</p>
         <form onSubmit={submitAuth}>
           <label htmlFor="auth-email">Email address</label>
-          <input id="auth-email" type="email" autoComplete="email" value={userEmail} onChange={e => setUserEmail(e.target.value)} placeholder="you@company.com" required />
+          <input id="auth-email" type="email" autoComplete="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="you@company.com" required />
           <label htmlFor="auth-password">Password</label>
           <input id="auth-password" type="password" autoComplete={authMode === "signin" ? "current-password" : "new-password"} minLength={8} value={password} onChange={e => setPassword(e.target.value)} required />
           {authError && <div className="auth-error" role="alert">{authError}</div>}
