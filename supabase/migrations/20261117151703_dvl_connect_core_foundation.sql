@@ -130,6 +130,11 @@ CREATE POLICY members_select_org ON dvl_connect.organisation_members
 FOR SELECT TO authenticated
 USING (dvl_connect_private.is_org_member(organisation_id));
 
+CREATE POLICY members_manage_admin ON dvl_connect.organisation_members
+FOR ALL TO authenticated
+USING (dvl_connect_private.has_org_role(organisation_id, ARRAY['owner','admin']))
+WITH CHECK (dvl_connect_private.has_org_role(organisation_id, ARRAY['owner','admin']));
+
 CREATE POLICY api_projects_select_member ON dvl_connect.api_projects
 FOR SELECT TO authenticated
 USING (dvl_connect_private.is_org_member(organisation_id));
@@ -163,7 +168,7 @@ GRANT USAGE ON SCHEMA dvl_connect_private TO authenticated;
 GRANT EXECUTE ON FUNCTION dvl_connect_private.is_org_member(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION dvl_connect_private.has_org_role(uuid,text[]) TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON dvl_connect.organisations TO authenticated;
-GRANT SELECT ON dvl_connect.organisation_members TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dvl_connect.organisation_members TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dvl_connect.api_projects TO authenticated;
 GRANT SELECT ON dvl_connect.audit_logs TO authenticated;
 REVOKE ALL ON dvl_connect_private.api_credentials FROM PUBLIC, anon, authenticated;
