@@ -1,4 +1,4 @@
-name: Verify Osusu build
+name: Verify DVL Connect build
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
   push:
     branches:
       - main
-      - feat/osusu-tag-payment-requests
+      - feat/dvl-connect-repurpose
 
 jobs:
   build:
